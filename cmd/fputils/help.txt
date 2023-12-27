@@ -1,0 +1,33 @@
+FPtuils: // honeywell intermec printers in fingerprint mode 
+  fputils [ flags ] [ command ] [ arguments ... ]
+
+flags = {
+	[ --arg value ]         // default
+	[ --host host ]         //
+	[ --beep=true/false ]   // true
+	[ --dither=true/false ] // false
+}
+
+command = {
+	utf8encode [ data ]
+	print file.ipl // borked
+	play file.mid
+	sendimg remotename image. // borked
+	help
+	encoderprbuf <in.image> <out.prbuf>
+	decodeprbuf <in.prbuf> <out.image>
+	printimg <in.image>
+	printprbuf <in.prbuf/png/bmp/gif> // !grayscale model only!
+}
+
+Important notes:
+  supported image formats: jpg/png/jpg/pcx/prbuf
+  labelsize:
+    my printer here supports ~1300x840
+  midi:
+    play only supports one voice midi files!
+    please make sure the file does not contain overlapping notes!
+
+Environment variables:
+printer / host can be set by
+	env->IPL_PRINTER 
