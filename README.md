@@ -1,13 +1,15 @@
-# LibFP
+# lipFP
 
-sth sth fingerprint utils
+This is LipFP, a set of fingerprint utilities. To be honest, I'm not entirely sure if it's for a fingerprint interprinter language or an intermec printer language, and I don't care anymore. So, I'm referring to it as "fingerprint" because that's what the screen of the printer says xD
 
-use pkg.go.dev/github.com/rileys-trash-can/libfp
+If you can help me out here, please do so.
 
-use "go install github.com/rileys-trash-can/libfp/cmd/fputils"
+Use [pkg.go.dev](https://pkg.go.dev/github.com/rileys-trash-can/libfp) for documentation.
 
-some stuff it can do: print png / gif / bmp images with gray color model directly (printprbuf) or any other by converting to rll (printimg)
+Useage / dokumentation `go install github.com/rileys-trash-can/libfp/cmd/fputils` to install.
 
-- `convert in.png -colormodel Gray out.png 
+Some of its capabilities include printing PNG/GIF/BMP images with a grayscale color model directly (printprbuf) or any other model by converting to RLL (printimg).
 
-for the runlengthencoding based PRBUF image format see /prbuf
+- `convert in.png -colormodel Gray out.png`
+
+For the run-length-encoding based PRBUF image format, see `/prbuf`.

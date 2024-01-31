@@ -1,4 +1,4 @@
-FPtuils: // honeywell intermec printers in fingerprint mode 
+FPuils: // Honeywell Intermec printers in fingerprint mode 
   fputils [ flags ] [ command ] [ arguments ... ]
 
 flags = {
@@ -9,19 +9,26 @@ flags = {
 }
 
 command = {
-	utf8encode [ data ]
-	print file.ipl // borked
-	play file.mid
-	sendimg remotename image. // borked
 	help
+
+	play file.mid
+
+	utf8encode [ data ]
 	encoderprbuf <in.image> <out.prbuf>
 	decodeprbuf <in.prbuf> <out.image>
+
+	print file.ipl // borked
+	textpipe
+	sendimg remotename image. // borked
 	printimg <in.image>
 	printprbuf <in.prbuf/png/bmp/gif> // !grayscale model only!
 }
 
 Important notes:
-  supported image formats: jpg/png/jpg/pcx/prbuf
+  some images just crash some printers (like `images/pipebomb.png`)
+  supported image formats
+    for printimg: jpg/png/jpg/pcx/prbuf
+    for printprbuf: prbuf/png/bmp/gif (dependent on printer)
   labelsize:
     my printer here supports ~1300x840
   midi:

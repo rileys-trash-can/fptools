@@ -94,7 +94,7 @@ func main() {
 		printer := OpenPrinter(args)
 		PlayMidi(printer, args[1])
 
-	case "textpipe": // TODO doku
+	case "textpipe":
 		s := bufio.NewScanner(os.Stdin)
 		p := OpenPrinter(args)
 
