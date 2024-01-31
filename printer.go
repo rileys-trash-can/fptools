@@ -164,8 +164,8 @@ func (p *Printer) ClearCanvas(field int) (err error) {
 	return
 }
 
-func (p *Printer) PF() (err error) {
-	err = p.SendCommand("PF")
+func (p *Printer) PF(i uint) (err error) {
+	err = p.SendCommand(fmt.Sprintf("PF %d", i))
 	if err != nil {
 		return
 	}

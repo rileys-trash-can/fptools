@@ -2,6 +2,7 @@ package fp
 
 import (
 	"fmt"
+	"strings"
 )
 
 func (p *Printer) PrintPos(x, y int) (err error) {
@@ -11,12 +12,13 @@ func (p *Printer) PrintPos(x, y int) (err error) {
 	}
 
 	_, err = p.ReadResponse()
-	return
 
+	return
 }
 
 func (p *Printer) PRText(txt string) (err error) {
-	err = p.SendCommand(fmt.Sprintf("PRTXT \"%s\"", txt))
+	err = p.SendCommand(fmt.Sprintf("PRTXT \"%s\"",
+		strings.ReplaceAll(strings.ReplaceAll(txt, "\n", "\\n"), "\"", "\\\"")))
 	if err != nil {
 		return
 	}

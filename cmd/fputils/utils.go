@@ -29,6 +29,7 @@ var (
 	OptColorspace = flag.Bool("map-colorspace", true, "toggle colorspace conversion when sending images (only w/o dither)")
 
 	OptResize = flag.String("resize", "fit", "set resize mode for images 'fit' or 'off'")
+	OptPFC    = flag.Uint("count", 1, "amout of printfeeds / labels to print")
 )
 
 func main() {
@@ -101,7 +102,7 @@ func main() {
 			p.ClearCanvas(-1)
 			p.PrintPos(40, 0)
 			p.PRText(strings.ReplaceAll(s.Text(), "\"", "\\\""))
-			p.PF()
+			p.PF(*OptPFC)
 		}
 
 	case "encoderprbuf":
@@ -187,17 +188,20 @@ func main() {
 			return
 		}
 
-		// prepare image
-		err = printer.SendCommand("PP 0,0:II:MAG 1,1")
-		if err != nil {
-			return
-		}
-		res, err := printer.ReadResponse()
-		if err != nil && res.Status != "Ok" {
-			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
-		}
+		/*
+			w, h := img.Bounds().Dx(), img.Bounds().Dy()
 
-		log.Printf("=> %s", res)
+			w = 835/2 - w/2
+			h = 1412/2 - h/2
+
+			log.Printf("w/h : %d/%d", w, h)
+		*/
+		const w, h = 0, 0
+		// prepare image
+		err = printer.PrintPos(w, h)
+		if err != nil {
+			log.Fatalf("Failed to set PrintPos: %s", err)
+		}
 
 		// send image
 		err = printer.DirectImage(img)
@@ -205,7 +209,7 @@ func main() {
 			log.Fatalf("Failed to directimg: %s", err)
 		}
 
-		res, err = printer.ReadResponse()
+		res, err := printer.ReadResponse()
 		if err != nil && res.Status != "Ok" {
 			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
 		}
@@ -223,9 +227,7 @@ func main() {
 		*/
 
 		log.Printf("sent data for printing...")
-		printer.SendCommand("PF")
-
-		res, err = printer.ReadResponse()
+		err = printer.PF(*OptPFC)
 		if err != nil {
 			return
 		}
@@ -282,26 +284,8 @@ func main() {
 			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
 		}
 
-		// play audio over http lul
-		/*err = printer.SendCommand(`RUN "wget 'http://198.18.1.147:8080/pb.wav' -O /dev/dsp"`)
-		if err != nil {
-			return
-		}
-
-		res, err = printer.ReadResponse()
-		if err != nil && res.Status != "Ok" {
-			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
-		}
-		*/
-
 		log.Printf("sent data for printing...")
-		printer.SendCommand("PF")
-
-		res, err = printer.ReadResponse()
-		if err != nil {
-			return
-		}
-
+		err = printer.PF(*OptPFC)
 		if err != nil {
 			log.Fatalf("Err: %s", err)
 		}
