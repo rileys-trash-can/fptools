@@ -196,9 +196,9 @@ func main() {
 
 			log.Printf("w/h : %d/%d", w, h)
 		*/
-		const w, h = 0, 0
+		const x, y = 0, 0
 		// prepare image
-		err = printer.PrintPos(w, h)
+		err = printer.PrintPos(x, y)
 		if err != nil {
 			log.Fatalf("Failed to set PrintPos: %s", err)
 		}
