@@ -6,12 +6,30 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 )
 
 const (
 	// Port used by most IPL compatible printers
 	DefaultPort = 9100
 )
+
+// path should be that of serial device
+func OpenPrinter(path string) (p *Printer, err error) {
+	var conn *os.File
+	conn, err = os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return
+	}
+
+	p = &Printer{
+
+		Conn:      conn,
+		resReader: bufio.NewReader(conn),
+	}
+
+	return p, nil
+}
 
 // address has to be specified with port
 func DialPrinter(address string) (p *Printer, err error) {
@@ -29,8 +47,14 @@ func DialPrinter(address string) (p *Printer, err error) {
 }
 
 type Printer struct {
-	Conn      net.Conn
+	Conn      PrinterConn
 	resReader *bufio.Reader
+}
+
+type PrinterConn interface {
+	Read(b []byte) (n int, err error)
+	Write(b []byte) (n int, err error)
+	Close() error
 }
 
 func (p *Printer) Read() (res []byte, err error) {
@@ -40,11 +64,15 @@ func (p *Printer) Read() (res []byte, err error) {
 		return
 	}
 
+	if len(res) > 0 && res[len(res)-1] == '\n' { // remove \r of \r\n
+		res = res[:len(res)-1]
+	}
+
 	if len(res) > 0 && res[len(res)-1] == '\r' { // remove \r of \r\n
 		res = res[:len(res)-1]
 	}
 
-	return
+	return res, nil
 }
 
 func (p *Printer) WriteAll(d []byte) (err error) {
@@ -122,7 +150,8 @@ func (p *Printer) ReadResponse() (res *Response, err error) {
 			return
 		}
 
-		if !(len(buf) < 2 || buf[0] != 0x0d || buf[1] != 0x0a) {
+		// empty line lol
+		if len(buf) == 0 {
 			break
 		}
 
@@ -134,11 +163,8 @@ func (p *Printer) ReadResponse() (res *Response, err error) {
 	if err != nil {
 		return
 	}
-	// log.Printf("stat %x - %s", stat, stat)
 
-	res.Status = string(stat[:len(stat)-2])
-
-	log.Printf("> %s", res.Status)
+	res.Status = string(stat)
 
 	if res.Status != "Ok" {
 		err = res
