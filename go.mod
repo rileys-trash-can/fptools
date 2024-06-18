@@ -1,6 +1,6 @@
 module github.com/rileys-trash-can/libfp
 
-go 1.21.4
+go 1.21
 
 require (
 	github.com/go-audio/midi v1.0.0
