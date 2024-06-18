@@ -90,8 +90,6 @@ func (p *Printer) WriteAll(d []byte) (err error) {
 }
 
 func (p *Printer) SendCommand(msg string) (err error) {
-	println(msg)
-
 	enc := EncodeMsg(msg)
 	err = p.WriteAll(enc)
 

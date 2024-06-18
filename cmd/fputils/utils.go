@@ -6,14 +6,13 @@ import (
 
 	// image stuffs
 	_ "github.com/samuel/go-pcx/pcx"
-	"golang.org/x/image/bmp"
+	_ "golang.org/x/image/bmp"
 	_ "image/jpeg"
 	"image/png"
 
 	"image"
 
 	"bufio"
-	"bytes"
 	_ "embed"
 	"flag"
 	"log"
@@ -182,60 +181,9 @@ func main() {
 			return
 		}
 
-		size := img.Bounds().Size()
-
-		const y = 0
-		var totalx, totaly = size.X, size.Y
-		_ = size
-
-		var blocksizey = 100
-
-		var blocksizex = totalx
-		blocksizex = T(totalx < blocksizex, totalx, blocksizex)
-		const DEBUGGAB = 0
-
-		log.Printf("")
-		log.Printf(" Printing using the following parameters:")
-		log.Printf(" - width  %d", totalx)
-		log.Printf(" - height %d", totaly)
-		log.Printf("")
-		log.Printf(" - blcksizex %d", blocksizex)
-		log.Printf(" - blcksizey %d", blocksizey)
-
-		for x := 0; x < totalx; x += blocksizex {
-		innererst:
-			for y := 0; y < totaly; y += blocksizey {
-				// TODO: center or sth
-
-				// prepare image
-				err = printer.PrintPos(x, y)
-				if err != nil {
-					log.Fatalf("Failed to set PrintPos (%d %d) %s", x, y, err)
-				}
-
-				b := &bytes.Buffer{}
-				i := SubImage(img,
-					T((totalx-x) >= blocksizex, blocksizex, totalx-x)-DEBUGGAB,
-					T((totaly-y) >= blocksizey, blocksizey, totaly-y)-DEBUGGAB,
-					x, y,
-				)
-
-				err = bmp.Encode(b, i)
-				if err != nil {
-					log.Printf("Failed to encode png: %s", err)
-					continue innererst
-				}
-
-				err = printer.DirectPRBUF(b.Bytes())
-				if err != nil {
-					log.Fatalf("Failed to directimg: %s", err)
-				}
-
-				res, err := printer.ReadResponse()
-				if err != nil && res.Status != "Ok" {
-					log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
-				}
-			}
+		err = printer.PrintChunked(img, 0, 0)
+		if err != nil {
+			log.Fatalf("Failed to print chunked: %s", err)
 		}
 
 		// play audio over http lul

@@ -7,8 +7,8 @@ margin 20
 width 824
 length 397
 
-large white 150x100 // outdated
+large white 150x100
 
-margin 49?
-width 824+
-length 1188+
+margin printer=48
+width  printer=816  -> image=801
+len/h  printer=1201 -> image=1200

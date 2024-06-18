@@ -3,8 +3,6 @@ package main
 import (
 	"image"
 	"image/color"
-
-	"log"
 )
 
 type subImage struct {
@@ -15,11 +13,9 @@ type subImage struct {
 }
 
 func SubImage(i image.Image, w, h, offsetx, offsety int) image.Image {
-	log.Printf("w %4d h %4d offsetx %4d offsety %4d", w, h, offsetx, offsety)
+	//log.Printf("w %4d h %4d offsetx %4d offsety %4d", w, h, offsetx, offsety)
 
 	s := &subImage{i, w, h, offsetx, offsety}
-
-	log.Printf("Bounds: %+#v", s.Bounds())
 
 	return s
 }
@@ -37,9 +33,12 @@ func (s *subImage) Bounds() image.Rectangle {
 	}
 }
 
+const FIXOFFSET = -1
+
 func (s *subImage) At(x, y int) color.Color {
 	//tx, ty := x-s.offsetx, y-s.offsety
-	tx, ty := s.x-(x-s.offsetx)+s.offsetx, s.y-(y-s.offsety)+s.offsety
+	tx, ty := s.x-(x-s.offsetx)+s.offsetx+FIXOFFSET,
+		s.y-(y-s.offsety)+s.offsety+FIXOFFSET
 
 	return s.img.At(tx, ty)
 }
