@@ -1,0 +1,14 @@
+configure > printing > media
+
+// TODO: RECAL!!!!!
+small orange 100x50 // outdated
+
+margin 20
+width 824
+length 397
+
+large white 150x100 // outdated
+
+margin 49?
+width 824+
+length 1188+

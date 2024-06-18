@@ -1,14 +1,9 @@
 echo hi
 
 convert ~/Pictures/Vec2/export.png \
-	-background black \
-	-channel RGB \
-	-negate \
+	-background white \
+	-ordered-dither o4x4 \
 	-resize 792x396 \
-	-fill black \
-	-gravity west \
-	-depth 1 \
-	-splice 30x0 \
 	$@
 
 # dither above fill

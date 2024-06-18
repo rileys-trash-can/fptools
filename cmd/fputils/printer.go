@@ -5,23 +5,34 @@ import (
 
 	_ "embed"
 	"log"
-	"os"
 )
 
 func OpenPrinter(args []string) *fp.Printer {
-	host := *PrinterAddress
-	if host == "" {
-		var ok bool
-		host, ok = os.LookupEnv("FP_PRINTER")
-		if !ok {
-			log.Fatalf("no printer specified: both env->FP_PRINTER and --host was not specified")
-		}
-	}
+	host := *PrinterAddressHost
+	port := *PrinterAddressPort
 
-	log.Printf("Dialing %s", host)
-	p, err := fp.DialPrinter(host)
-	if err != nil {
-		log.Fatalf("Printer %s", err)
+	ctype := *PrinterAddressType
+
+	var err error
+	var p *fp.Printer
+
+	switch ctype {
+	case "net":
+		log.Printf("Dialing %s", host)
+		p, err = fp.DialPrinter(host)
+		if err != nil {
+			log.Fatalf("Printer %s", err)
+		}
+
+	case "serial":
+		log.Printf("Open %s", port)
+		p, err = fp.OpenPrinter(port)
+		if err != nil {
+			log.Fatalf("Printer %s", err)
+		}
+
+	default:
+		log.Fatalf("Invaid connection type '%s', choose between 'net' and 'serial'", ctype)
 	}
 
 	if *OptBeep {

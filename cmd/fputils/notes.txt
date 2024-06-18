@@ -1,6 +1,15 @@
+why it bork sometimes? -> png ig?
+ 2c -> no
+ sRGB -> font format error
+ top left corner white -> EOF
+   how found out? -> inkscape rounded corners
+
 Command PRBUF
 
 PRBUF<nexp1>[,<nexp2 ]<new line><image data>
  
 page 209 on: 
 https://www.barcodedeus.de/artikeldownload/pdf_en/Inter-C4_Guide.pdf
+
+
+-> fix is using bmp in stripes (cut image into chunks/blocks)

@@ -6,6 +6,11 @@ flags = {
 	[ --host host ]         //
 	[ --beep=true/false ]   // true
 	[ --dither=true/false ] // false
+	[ --count num ]         // 1
+
+	[ --host ip:port ]      //
+	[ --port /dev/path ]    //
+	[ --ctype net/serial ]  // net / serial
 }
 
 command = {
@@ -20,15 +25,17 @@ command = {
 	print file.ipl // borked
 	textpipe
 	sendimg remotename image. // borked
-	printimg <in.image>
-	printprbuf <in.prbuf/png/bmp/gif> // !grayscale model only!
+	printimg <in.image> // borked
+	printprbuf <in.prbuf/png/bmp/gif> // borked
+	printchunk // least borked
 }
 
 Important notes:
-  some images just crash some printers (like `images/pipebomb.png`)
+  some images just crash some printers (like `images/pipebomb.png` when printing using printprbuf // printimg)
   supported image formats
     for printimg: jpg/png/jpg/pcx/prbuf
     for printprbuf: prbuf/png/bmp/gif (dependent on printer)
+    for printchunk: jpg/png/jpg/pcx/bmp/prbuf
   labelsize:
     my printer here supports ~1300x840
   midi:
@@ -37,4 +44,6 @@ Important notes:
 
 Environment variables:
 printer / host can be set by
-	env->IPL_PRINTER 
+	env->IPL_PRINTER -> net address e.g. 10.0.0.5:9100
+	env->IPL_PORT    -> serial port e.g. COM13 or /dev/usb/lp0
+	env->IPL_CTYPE   -> com. type net / serial 

@@ -6,13 +6,14 @@ import (
 
 	// image stuffs
 	_ "github.com/samuel/go-pcx/pcx"
-	_ "golang.org/x/image/bmp"
+	"golang.org/x/image/bmp"
 	_ "image/jpeg"
 	"image/png"
 
 	"image"
 
 	"bufio"
+	"bytes"
 	_ "embed"
 	"flag"
 	"log"
@@ -21,7 +22,10 @@ import (
 )
 
 var (
-	PrinterAddress = flag.String("host", os.Getenv("IPL_PRINTER"), "Specify printer, can also be set by envIPL_PRINTER ")
+	PrinterAddressHost = flag.String("host", os.Getenv("IPL_PRINTER"), "Specify printer, can also be set by env IPL_PRINTER (net port)")
+	PrinterAddressPort = flag.String("port", os.Getenv("IPL_PORT"), "Specify printer, can also be set by env IPL_PORT (usb port)")
+
+	PrinterAddressType = flag.String("ctype", os.Getenv("IPL_CTYPE"), "Specify printer connection type, can also be set by env IPL_CTYPE")
 
 	OptBeep = flag.Bool("beep", true, "toggle connection-beep")
 
@@ -30,6 +34,7 @@ var (
 
 	OptResize = flag.String("resize", "fit", "set resize mode for images 'fit' or 'off'")
 	OptPFC    = flag.Uint("count", 1, "amout of printfeeds / labels to print")
+	OptDOPF   = flag.Bool("dopf", true, "enable or disable printfeed")
 )
 
 func main() {
@@ -161,6 +166,96 @@ func main() {
 
 		log.Printf("Wrote a bunch of bytes")
 
+	case "printchunk":
+		if len(args) < 2 {
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		img := ReadImage(args[1])
+
+		printer := OpenPrinter(args)
+
+		// clear canvas
+		err := printer.ClearCanvas(-1)
+		if err != nil {
+			return
+		}
+
+		size := img.Bounds().Size()
+
+		const y = 0
+		var totalx, totaly = size.X, size.Y
+		_ = size
+
+		var blocksizey = 100
+
+		var blocksizex = totalx
+		blocksizex = T(totalx < blocksizex, totalx, blocksizex)
+		const DEBUGGAB = 0
+
+		log.Printf("")
+		log.Printf(" Printing using the following parameters:")
+		log.Printf(" - width  %d", totalx)
+		log.Printf(" - height %d", totaly)
+		log.Printf("")
+		log.Printf(" - blcksizex %d", blocksizex)
+		log.Printf(" - blcksizey %d", blocksizey)
+
+		for x := 0; x < totalx; x += blocksizex {
+		innererst:
+			for y := 0; y < totaly; y += blocksizey {
+				// TODO: center or sth
+
+				// prepare image
+				err = printer.PrintPos(x, y)
+				if err != nil {
+					log.Fatalf("Failed to set PrintPos (%d %d) %s", x, y, err)
+				}
+
+				b := &bytes.Buffer{}
+				i := SubImage(img,
+					T((totalx-x) >= blocksizex, blocksizex, totalx-x)-DEBUGGAB,
+					T((totaly-y) >= blocksizey, blocksizey, totaly-y)-DEBUGGAB,
+					x, y,
+				)
+
+				err = bmp.Encode(b, i)
+				if err != nil {
+					log.Printf("Failed to encode png: %s", err)
+					continue innererst
+				}
+
+				err = printer.DirectPRBUF(b.Bytes())
+				if err != nil {
+					log.Fatalf("Failed to directimg: %s", err)
+				}
+
+				res, err := printer.ReadResponse()
+				if err != nil && res.Status != "Ok" {
+					log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
+				}
+			}
+		}
+
+		// play audio over http lul
+		/*err = printer.SendCommand(`RUN "wget 'http://198.18.1.147:8080/pb.wav' -O /dev/dsp"`)
+		if err != nil {
+			return
+		}
+
+		res, err = printer.ReadResponse()
+		if err != nil && res.Status != "Ok" {
+			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
+		}
+		*/
+
+		log.Printf("sent data for printing...")
+		err = printer.PF(*OptPFC)
+		if err != nil {
+			return
+		}
+
 	case "printimg":
 		if len(args) < 2 {
 			flag.Usage()
@@ -200,7 +295,7 @@ func main() {
 		// prepare image
 		err = printer.PrintPos(x, y)
 		if err != nil {
-			log.Fatalf("Failed to set PrintPos: %s", err)
+			log.Fatalf("Failed to set PrintPos (%d %d): %s", x, y, err)
 		}
 
 		// send image
@@ -249,6 +344,7 @@ func main() {
 		// 			Resize: Resize(*OptResize),
 		// 		}
 
+		log.Printf("Reading File %s", args[1])
 		in, err := os.ReadFile(args[1])
 		if err != nil {
 			log.Fatalf("Failed to open %s: %s", args[1], err)
@@ -257,12 +353,14 @@ func main() {
 		printer := OpenPrinter(args)
 
 		// clear canvas
+		log.Printf("Clearing Canvas")
 		err = printer.ClearCanvas(-1)
 		if err != nil {
 			return
 		}
 
 		// prepare image
+		log.Printf("Prepare Image")
 		err = printer.SendCommand("PP 0,0:II:MAG 1,1")
 		if err != nil {
 			return
@@ -283,11 +381,13 @@ func main() {
 		if err != nil && res.Status != "Ok" {
 			log.Fatalf("Failed to readresponse: %s: %s", err, res.Status)
 		}
-
 		log.Printf("sent data for printing...")
-		err = printer.PF(*OptPFC)
-		if err != nil {
-			log.Fatalf("Err: %s", err)
+
+		if *OptDOPF {
+			err = printer.PF(*OptPFC)
+			if err != nil {
+				log.Fatalf("Err: %s", err)
+			}
 		}
 
 	case "sendimg":
@@ -296,17 +396,23 @@ func main() {
 			os.Exit(1)
 		}
 
-		conv := fp.ImageConverter{
-			Dither:        *OptDither,
-			MapColorspace: *OptColorspace, // only works when dither is not set
+		/*
+			conv := fp.ImageConverter{
+				Dither:        *OptDither,
+				MapColorspace: *OptColorspace, // only works when dither is not set
 
-			Resize: Resize(*OptResize),
-		}
+				Resize: Resize(*OptResize),
+			}
 
-		img := ReadImage(args[2])
-		b, err := conv.Convert(img)
+			img := ReadImage(args[2])
+			b, err := conv.Convert(img)
+			if err != nil {
+				log.Fatalf("Failed to convert image: %s", err)
+			}
+		*/
+		b, err := os.ReadFile(args[2])
 		if err != nil {
-			log.Fatalf("Failed to convert image: %s", err)
+			log.Fatalf("Failed to read img: %s", err)
 		}
 
 		printer := OpenPrinter(args)
@@ -364,4 +470,14 @@ func Resize(r string) fp.Resize {
 	}
 
 	return 0
+}
+
+func T[K any](c bool, a, b K) (r K) {
+	r = b
+
+	if c {
+		r = a
+	}
+
+	return
 }
