@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Printer</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="/bs.css">
+
+    <style>
+        .form, ul {
+        		text-align: left;
+        	}
+    </style>
+    <script>
+    	let printID = "{{ .PrintID }}"
+ 		const status_endpoint = `/api/status/${printID}`
+
+    	let id = setInterval(
+    		_ => {
+	    		fetch(status_endpoint)
+	    			.then(d=>d.json())
+	    			.then(d=>{
+						let status = document.getElementById("status")
+						
+						status.innerHTML = d.message
+						if(d.reload)
+							document.getElementById("preview").src += "?new"
+						
+
+						if(d.done) {
+							console.log("d.Done: Clearing Interval")
+						
+							clearInterval(id)
+						}
+	    			})
+    		},
+    		1000
+    	)
+    </script>
+</head>
+
+<body>
+    <div class="container text-center mt-5">
+        <h1>Printing...</h1>
+        <p class="lead">
+        	your image is now being printed...
+        	<span id="status">{{ .InitialStatus }}</span>
+        </p>
+        <hr>
+
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <h4>Preview:</h4>
+				<figure class="figure col-md-12">
+	                <img id="preview" src="/img/{{ .PrintID }}" class="figure-img img-fluid rounded" alt="preview of printed image">
+				</figure>
+            </div>
+            <div class="col-md-4">
+                <span class="bi bi-tools h1"></span>
+                <h4>API Usage:</h4>
+                <p>
+					<ul>
+						<li>
+							PUT /api/print to print image
+							<br>
+							<code>$ curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print</code>
+						</li>
+						<li>
+							GET /api/usage to get usage in json format
+							<br>
+							<code>$ curl <host>/usage</code>
+						</li>
+							
+					<ul>
+                </p>
+            </div>
+            <div class="col-md-4">
+                <span class="bi bi-tools h1"></span>
+                <h4>Print More?</h4>
+                <p>
+					<a class="btn btn-primary" href="/" role="button">To the Form</a>
+                </p>
+            </div>
+        </div>
+
+        <footer style="margin-top: 2em">
+            Made with
+            <i class="bi bi-heart-fill" style="color: red"></i> by Riley © 2024 &lt;riley (at) e926 (dot) de &gt;
+        </footer>
+    </div>
+</body>
+
+</html>

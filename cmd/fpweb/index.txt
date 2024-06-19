@@ -1,5 +1,5 @@
 Usage:
-	PUT /print to print image
+	PUT /api/print to print image
 		curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print
-	GET /usage to get usage in json format
+	GET /api/usage to get usage in json format
 		curl <host>/usage
