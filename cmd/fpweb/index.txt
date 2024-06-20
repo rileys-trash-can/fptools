@@ -1,5 +1,21 @@
 Usage:
 	PUT /api/print to print image
 		curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print
-	GET /api/usage to get usage in json format
-		curl <host>/usage
+		possible GET arguments
+			- dither (o4x4 | noise | bayer)</li>
+			- resize
+			- stretch
+			- rotate
+			- centerh
+			- centerv
+			- tiling
+	GET /api/job/<uuid>
+		curl <host>/api/job/<uuid>
+		example json:
+		{
+			"message":"done", // step
+			"progress":1,     // progress from 0 to 1 // -1 if error occurred
+			"done":true,      // no further request should occur when set to true
+			"reload":true     // preview was generated
+		}
+		

@@ -15,31 +15,47 @@
     </style>
     <script>
     	let printID = "{{ .PrintID }}"
- 		const status_endpoint = `/api/status/${printID}`
+ 		const status_endpoint = `/api/job/${printID}`
 		let i  = 0
+		let errors = 0
 
     	let id = setInterval(
-    		_ => {
-	    		fetch(status_endpoint)
-	    			.then(d=>d.json())
-	    			.then(d=>{
-						let status = document.getElementById("status")
-						
-						status.innerHTML = d.message + (
-							d.done ? ("") : (".".repeat((++i)%4))
-						)
-						if(d.reload)
-							document.getElementById("preview").src += "?new"
+    		async _ => {
+   				let status = document.getElementById("status")
 
-						if(d.progress < 0) // error
-							status.style = "color:red"
+	 			try {
+		    		let res = await fetch(status_endpoint)
+		    		let d = await res.json()
 							
-						if(d.done) {
-							console.log("d.Done: Clearing Interval")
-						
-							clearInterval(id)
-						}
-	    			})
+					status.innerHTML = d.message + " " +
+						+ (Math.floor(d.progress*1000)/10) + "%"
+						+ (d.done ? ("") : (".".repeat((i)%4)))
+					if(d.reload)
+						document.getElementById("preview").src += "?new"
+
+					if(d.progress < 0) // error
+						status.style = "color:red"
+								
+					if(d.done) {
+						console.log("d.Done: Clearing Interval")
+					
+						clearInterval(id)
+					}
+
+					i++
+					errors = 0
+	    		} catch (error) {
+	    			console.error("Error in fetch", error)
+
+	    			errors++
+	    			if(errors > 3) {
+	    			console.error(errors, "errors, stopping interval")
+						clearInterval(id)
+
+						status.innerHTML = "failed to get status"
+						status.style = "color:red"
+	    			}
+	    		}
     		},
     		200
     	)
@@ -70,14 +86,19 @@
 						<li>
 							PUT /api/print to print image
 							<br>
-							<code>$ curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print</code>
-						</li>
-						<li>
-							GET /api/usage to get usage in json format
+							<code>$ curl -X PUT -T &lt;file png/bmp/prbuf/rll/gif&gt; &lt;host&gt;/print</code>
 							<br>
-							<code>$ curl <host>/usage</code>
+							available <code>GET</code> arguments: 
+							<ul>
+								<li>dither (o4x4 | noise | bayer)</li>
+								<li>resize</li>
+								<li>stretch</li>
+								<li>rotate</li>
+								<li>centerh</li>
+								<li>centerv</li>
+								<li>tiling</li>
+							</ul>
 						</li>
-							
 					<ul>
                 </p>
             </div>
@@ -85,7 +106,7 @@
                 <span class="bi bi-tools h1"></span>
                 <h4>Print More?</h4>
                 <p>
-					<a class="btn btn-primary" href="/" role="button">To the Form</a>
+					<a class="btn btn-primary" href="/" role="button">To the Form!</a>
                 </p>
             </div>
         </div>

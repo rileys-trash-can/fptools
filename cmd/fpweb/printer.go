@@ -41,6 +41,10 @@ func goPrintQ() {
 	for {
 		select {
 		case job := <-printQ:
+			if *OptVerbose {
+				log.Printf("Got printjob %+v", job)
+			}
+
 			imageUpdateCh <- Status{
 				UUID:     job.UUID,
 				Step:     "decode",

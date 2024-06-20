@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/google/uuid"
+	"log"
+	"time"
 )
 
 var (
@@ -24,10 +25,7 @@ type Status struct {
 	Reload   bool
 	Done     bool
 	Progress float32
-}
-
-func (s *Status) String() string {
-	return fmt.Sprintf("%s %.2f%%", s.Step, s.Progress*100)
+	updated  time.Time
 }
 
 func GetStatus(uuid uuid.UUID) *Status {
@@ -45,19 +43,34 @@ func init() {
 }
 
 func doStatus() {
+	const livetime = time.Hour
 	statusMap := make(map[uuid.UUID]*Status)
+	t := time.NewTicker(livetime / 2)
 
 	for {
+
 		select {
+		case now := <-t.C:
+			for k, s := range statusMap {
+				if now.Before(s.updated.Add(livetime)) {
+					log.Printf("removing job %s last updated %s", s.UUID, s.updated)
+
+					delete(statusMap, k)
+				}
+			}
+
 		case n := <-newImageCh:
 			statusMap[n] = &Status{
 				UUID: n,
 
 				Step:     "created",
 				Progress: 0,
+				updated:  time.Now(),
 			}
 
 		case update := <-imageUpdateCh:
+			update.updated = time.Now()
+
 			statusMap[update.UUID] = &update
 
 		case r := <-getImageStatusCh:

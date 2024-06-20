@@ -13,12 +13,45 @@
         		text-align: left;
         	}
     </style>
+
+	<script>
+		function dofunc() {
+			if(document.getElementById("preset").func)
+				eval(document.getElementById("preset").func) // bremium code
+			else
+				applyrecommended()
+		}
+	
+		function applyrecommended() {
+			document.getElementsByName("dither")[0].value = "bayer"
+			document.getElementsByName("resize")[0].checked = "on"
+			document.getElementsByName("rotate")[0].checked = "on"
+			document.getElementsByName("centerh")[0].checked = "on"
+			document.getElementsByName("centerv")[0].checked = "on"
+
+			document.getElementById("preset").innerHTML = "reset form"
+			document.getElementById("preset").func = "resetform()"
+		}
+
+		function resetform() {
+			document.getElementsByName("dither")[0].value = ""
+			document.getElementsByName("resize")[0].checked = ""
+			document.getElementsByName("stretch")[0].checked = ""
+			document.getElementsByName("rotate")[0].checked = ""
+			document.getElementsByName("centerh")[0].checked = ""
+			document.getElementsByName("centerv")[0].checked = ""
+			document.getElementsByName("tiling")[0].checked = ""
+
+			document.getElementById("preset").innerHTML = "apply recommened"
+			document.getElementById("preset").func = "applyrecommended()"
+		}
+	</script>
 </head>
 
 <body>
     <div class="container text-center mt-5">
         <h1>Label Printer</h1>
-        <p class="lead">Where Your Label is printered</p>
+        <p class="lead">Where The Worlds Labels are printered</p>
         <hr>
 
         <div class="row mt-5">
@@ -77,6 +110,7 @@
 					  </div>
 					</div>
                     <button type="submit" class="btn btn-primary">Print NOW!</button>
+                    <button type="button" class="btn btn-secondary" id="preset" onclick="dofunc()">apply recommended</button>
                 </form>
             </div>
             <div class="col-md-6">
@@ -87,14 +121,19 @@
 						<li>
 							PUT /api/print to print image
 							<br>
-							<code>$ curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print</code>
-						</li>
-						<li>
-							GET /api/usage to get usage in json format
+							<code>$ curl -X PUT -T &lt;file png/bmp/prbuf/rll/gif&gt; &lt;host&gt;/print</code>
 							<br>
-							<code>$ curl <host>/usage</code>
+							available <code>GET</code> arguments: 
+							<ul>
+								<li>dither (o4x4 | noise | bayer)</li>
+								<li>resize</li>
+								<li>stretch</li>
+								<li>rotate</li>
+								<li>centerh</li>
+								<li>centerv</li>
+								<li>tiling</li>
+							</ul>
 						</li>
-							
 					<ul>
                 </p>
             </div>
