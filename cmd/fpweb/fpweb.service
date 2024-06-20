@@ -1,0 +1,12 @@
+[Unit]
+Description=fpweb web thingy; webinterface for printing on fingerprint printers
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/fpweb/fpweb
+Restart=always
+User=fpweb
+
+[Install]
+WantedBy=multi-user.target
