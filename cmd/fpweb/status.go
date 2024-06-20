@@ -53,8 +53,8 @@ func doStatus() {
 			statusMap[n] = &Status{
 				UUID: n,
 
-				Step:     "creation",
-				Progress: 1,
+				Step:     "created",
+				Progress: 0,
 			}
 
 		case update := <-imageUpdateCh:

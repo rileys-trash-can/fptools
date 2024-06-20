@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/makeworld-the-better-one/dither/v2"
@@ -25,7 +24,6 @@ import (
 	_ "golang.org/x/image/bmp"
 	"image"
 	"image/color"
-	"image/draw"
 	_ "image/jpeg"
 	"image/png"
 )
@@ -54,15 +52,18 @@ var (
 )
 
 var (
-	ListenAddr = flag.String("listen", "[::]:8070", "specify port to listen on")
+	ConfigPath = flag.String("config", "config.yml", "config to read")
+
+	ListenAddr = flag.String("listen", "", "specify port to listen on, fallback is [::]:8070")
 
 	PrinterAddressHost = flag.String("host", os.Getenv("IPL_PRINTER"), "Specify printer, can also be set by env IPL_PRINTER (net port)")
 	PrinterAddressPort = flag.String("port", os.Getenv("IPL_PORT"), "Specify printer, can also be set by env IPL_PORT (usb port)")
 
 	PrinterAddressType = flag.String("ctype", os.Getenv("IPL_CTYPE"), "Specify printer connection type, can also be set by env IPL_CTYPE")
 
-	OptBeep   = flag.Bool("beep", true, "toggle connection-beep")
-	OptDryRun = flag.Bool("dry-run", false, "disables connection to printer; for testing")
+	OptVerbose = flag.Bool("verbose", false, "toggle verbose logging")
+	OptBeep    = flag.Bool("beep", true, "toggle connection-beep")
+	OptDryRun  = flag.Bool("dry-run", false, "disables connection to printer; for testing")
 )
 
 var printer *fp.Printer
@@ -70,6 +71,7 @@ var printer *fp.Printer
 func main() {
 	log.SetFlags(log.Flags() | log.Lshortfile)
 	flag.Parse()
+	conf := GetConfig()
 
 	if !*OptDryRun {
 		printer = OpenPrinter()
@@ -109,9 +111,15 @@ func main() {
 		Methods("POST").
 		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrintPOST)))
 
-	log.Printf("Listening on %s", *ListenAddr)
+	addr := T(*ListenAddr != "", *ListenAddr, conf.Listen)
+
+	if addr == "" {
+		addr = "[::]:8070"
+	}
+
+	log.Printf("Listening on %s", addr)
 	log.Fatalf("Failed to ListenAndServe: %s",
-		http.ListenAndServe(*ListenAddr, gmux))
+		http.ListenAndServe(addr, gmux))
 }
 
 type handleFile struct {
@@ -183,14 +191,16 @@ func (m *errMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("Error in %s request of '%s': %s", r.Method, r.URL.Path, err)
-		log.Print("stacktrace from panic: \n" + string(debug.Stack()))
+		if *OptVerbose {
+			log.Print("stacktrace from panic: \n" + string(debug.Stack()))
+		}
 
 		switch w.Header().Get("Content-Type") {
 		case "application/json":
 			w.Header().Set("Location", "/")
 
 			w.WriteHeader(500)
-			fmt.Fprintf(w, "{\"done\":false,\"message\":\"%s\",\"error\":true}", err)
+			fmt.Fprintf(w, "{\"done\":true,\"message\":\"%s\",\"error\":true}", err)
 			return
 
 		default:
@@ -252,9 +262,10 @@ func BoolFromString(n string) bool {
 }
 
 type StatusResponse struct {
-	Message string `json:"message"`
-	Done    bool   `json:"done"`
-	Reload  bool   `json:"reload"`
+	Message  string  `json:"message"`
+	Progress float32 `json:"progress"`
+	Done     bool    `json:"done"`
+	Reload   bool    `json:"reload"`
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -303,11 +314,15 @@ func handleStatusAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 
+	log.Printf("[GET] /api/status/%s\n%+v", id, status)
+
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&StatusResponse{
-		Message: status.String(),
-		Done:    status.Done,
-		Reload:  status.Reload,
+		Message:  status.String(),
+		Progress: status.Progress,
+
+		Done:   status.Done,
+		Reload: status.Reload,
 	})
 	if err != nil {
 		panic(err)
@@ -316,8 +331,8 @@ func handleStatusAPI(w http.ResponseWriter, r *http.Request) {
 
 func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 	uid := uuid.New()
-
 	newImageCh <- uid
+
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 
@@ -327,164 +342,62 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		const totalSteps = 8
-
-		defer file.Close()
-
-		log.Printf("[POST] file '%s' %d bytes", header.Filename, header.Size)
-
-		var (
-			ditherer = DitherFromString(r.FormValue("dither"))
-
-			optresize  = BoolFromString(r.FormValue("resize"))
-			optstretch = BoolFromString(r.FormValue("stretch"))
-			optrotate  = BoolFromString(r.FormValue("rotate"))
-			optcenterh = BoolFromString(r.FormValue("centerh"))
-			optcenterv = BoolFromString(r.FormValue("centerv"))
-		//	opttiling  = BoolFromString(r.FormValue("tiling"))
-		)
-
 		imageUpdateCh <- Status{
 			UUID:     uid,
-			Step:     "decode",
-			Progress: 1 / totalSteps,
-			Done:     false,
-		}
-		img, ifmt, err := image.Decode(file)
-		if err != nil {
-			panic(err)
-		}
-
-		log.Printf("[POST] Received Image in %s format bounds: %+v", ifmt, img.Bounds())
-
-		//TODO more config
-		var maxwidth, maxheight = 800, 1200
-		var method = imaging.Lanczos
-
-		size := img.Bounds().Size()
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "rotating",
-			Progress: 2 / totalSteps,
-			Done:     false,
-		}
-		if optrotate {
-			log.Printf("testing rotate")
-			if (maxwidth > maxheight) != (size.X > size.Y) {
-				log.Printf("rotating...")
-				img = imaging.Rotate90(img)
-			}
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "resizing",
-			Progress: 3 / totalSteps,
-			Done:     false,
-		}
-		if optresize {
-			log.Printf("resize; stretch: %t", optstretch)
-			if optstretch {
-				img = imaging.Resize(img, maxwidth, maxheight, method)
-			} else {
-				size = img.Bounds().Size()
-
-				px := float32(size.X) / float32(maxwidth)
-				py := float32(size.Y) / float32(maxheight)
-
-				if px > py {
-					img = imaging.Resize(img, maxwidth, 0, method)
-				} else {
-					img = imaging.Resize(img, 0, maxheight, method)
-				}
-			}
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "centering",
-			Progress: 4 / totalSteps,
-			Done:     false,
-		}
-		if optcenterh || optcenterv {
-			nimg := imaging.New(maxwidth, maxheight, color.White)
-			size = img.Bounds().Size()
-
-			var x, y = 0, 0
-			if optcenterh {
-				x = maxwidth/2 - size.X/2
-			}
-
-			if optcenterv {
-				y = maxheight/2 - size.Y/2
-			}
-
-			draw.Draw(nimg,
-				img.Bounds().Add(image.Pt(x, y)),
-				img,
-				image.Point{},
-				draw.Over,
-			)
-
-			img = nimg
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "dithering",
-			Progress: 5 / totalSteps,
-			Done:     false,
-		}
-		if ditherer != nil {
-			log.Printf("Dithering with %T", ditherer)
-
-			img = ditherer.Apply(img)
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "saving",
-			Progress: 6 / totalSteps,
-			Done:     false,
-		}
-		_, err = SaveImage(img, uid.String())
-		if err != nil {
-			log.Printf("Failed to encode & save image: %s", err)
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "printing",
-			Progress: 7 / totalSteps,
-			Reload:   true,
-			Done:     false,
-		}
-
-		if !*OptDryRun {
-			err = printer.PrintChunked(img, 0, 0)
-			if err != nil {
-				panic(err)
-			}
-
-			err = printer.PF(1)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "done",
-			Progress: 8 / totalSteps,
-			Reload:   true,
+			Step:     "Invalid File Upload: " + err.Error(),
+			Progress: -1,
 			Done:     true,
 		}
-	}()
+
+		return
+	}
+
+	defer file.Close()
+
+	log.Printf("[POST] file '%s' %d bytes", header.Filename, header.Size)
+
+	job := &PrintJob{
+		UUID: uid,
+
+		ditherer: DitherFromString(r.FormValue("dither")),
+
+		optresize:  BoolFromString(r.FormValue("resize")),
+		optstretch: BoolFromString(r.FormValue("stretch")),
+		optrotate:  BoolFromString(r.FormValue("rotate")),
+		optcenterh: BoolFromString(r.FormValue("centerh")),
+		optcenterv: BoolFromString(r.FormValue("centerv")),
+		opttiling:  BoolFromString(r.FormValue("tiling")), //TODO: use
+	}
+
+	img, ifmt, err := image.Decode(file)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid Image: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	job.Img = img
+
+	select {
+	case printQ <- job:
+		break
+
+	default:
+		imageUpdateCh <- Status{
+			UUID: uid,
+
+			Step:     "print queue full",
+			Progress: -1,
+			Done:     true,
+		}
+	}
+	log.Printf("[POST] Received Image in %s format bounds: %+v", ifmt, img.Bounds())
+
 }
 
 func b64image(img image.Image) string {
@@ -518,4 +431,12 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Serving %s", "saves/"+uid.String()+".png")
 	http.ServeFile(w, r, "saves/"+uid.String()+".png")
+}
+
+func T[K any](c bool, a, b K) K {
+	if c {
+		return a
+	}
+
+	return b
 }

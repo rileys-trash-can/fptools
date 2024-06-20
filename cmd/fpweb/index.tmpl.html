@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Printer</title>
+    <title>Print Status</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="/bs.css">
 
@@ -16,6 +16,7 @@
     <script>
     	let printID = "{{ .PrintID }}"
  		const status_endpoint = `/api/status/${printID}`
+		let i  = 0
 
     	let id = setInterval(
     		_ => {
@@ -24,11 +25,15 @@
 	    			.then(d=>{
 						let status = document.getElementById("status")
 						
-						status.innerHTML = d.message
+						status.innerHTML = d.message + (
+							d.done ? ("") : (".".repeat((++i)%4))
+						)
 						if(d.reload)
 							document.getElementById("preview").src += "?new"
-						
 
+						if(d.progress < 0) // error
+							status.style = "color:red"
+							
 						if(d.done) {
 							console.log("d.Done: Clearing Interval")
 						
@@ -36,7 +41,7 @@
 						}
 	    			})
     		},
-    		1000
+    		200
     	)
     </script>
 </head>
