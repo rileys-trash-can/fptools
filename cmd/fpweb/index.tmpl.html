@@ -26,7 +26,8 @@
 	 			try {
 		    		let res = await fetch(status_endpoint)
 		    		let d = await res.json()
-							
+					console.log(d)
+					
 					status.innerHTML = d.message + " " +
 						+ (Math.floor(d.progress*1000)/10) + "%"
 						+ (d.done ? ("") : (".".repeat((i)%4)))
@@ -35,6 +36,9 @@
 
 					if(d.progress < 0) // error
 						status.style = "color:red"
+
+					if(d.progress >= 1) // success
+						status.style = "color:green"
 								
 					if(d.done) {
 						console.log("d.Done: Clearing Interval")
