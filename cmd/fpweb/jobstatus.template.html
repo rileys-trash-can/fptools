@@ -2,31 +2,31 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Status</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="/bs.css">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Print Status</title>
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="/bs.css">
 
-    <style>
-        .form, ul {
-        		text-align: left;
-        	}
-    </style>
-    <script>
-    	let printID = "{{ .PrintID }}"
+	<style>
+		.form, ul {
+				text-align: left;
+			}
+	</style>
+	<script>
+		let printID = "{{ .PrintID }}"
  		const status_endpoint = `/api/job/${printID}`
 		let i  = 0
 		let reload = false
 		let errors = 0
 
-    	let id = setInterval(
-    		async _ => {
+		let id = setInterval(
+			async _ => {
    				let status = document.getElementById("status")
 
 	 			try {
-		    		let res = await fetch(status_endpoint)
-		    		let d = await res.json()
+					let res = await fetch(status_endpoint)
+					let d = await res.json()
 					console.log(d)
 					
 					status.innerHTML = d.message + " " +
@@ -51,44 +51,44 @@
 
 					i++
 					errors = 0
-	    		} catch (error) {
-	    			console.error("Error in fetch", error)
+				} catch (error) {
+					console.error("Error in fetch", error)
 
-	    			errors++
-	    			if(errors > 3) {
-	    			console.error(errors, "errors, stopping interval")
+					errors++
+					if(errors > 3) {
+					console.error(errors, "errors, stopping interval")
 						clearInterval(id)
 
 						status.innerHTML = "failed to get status"
 						status.style = "color:red"
-	    			}
-	    		}
-    		},
-    		500
-    	)
-    </script>
+					}
+				}
+			},
+			500
+		)
+	</script>
 </head>
 
 <body>
-    <div class="container text-center mt-5">
-        <h1>Printing...</h1>
-        <p class="lead">
-        	your image is now being printed...
-        	<span id="status">{{ .InitialStatus }}</span>
-        </p>
-        <hr>
+	<div class="container text-center mt-5">
+		<h1>Printing...</h1>
+		<p class="lead">
+			your image is now being printed...
+			<span id="status">{{ .InitialStatus }}</span>
+		</p>
+		<hr>
 
-        <div class="row mt-5">
-            <div class="col-md-4">
-                <h4>Preview:</h4>
+		<div class="row mt-5">
+			<div class="col-md-4">
+				<h4>Preview:</h4>
 				<figure class="figure col-md-12">
-	                <img id="preview" src="/img/{{ .PrintID }}" class="figure-img img-fluid rounded" alt="preview of printed image">
+					<img id="preview" src="/img/{{ .PrintID }}" class="figure-img img-fluid rounded" alt="preview of printed image">
 				</figure>
-            </div>
-            <div class="col-md-4">
-                <span class="bi bi-tools h1"></span>
-                <h4>API Usage:</h4>
-                <p>
+			</div>
+			<div class="col-md-4">
+				<span class="bi bi-tools h1"></span>
+				<h4>API Usage:</h4>
+				<p>
 					<ul>
 						<li>
 							PUT /api/print to print image
@@ -97,10 +97,10 @@
 							<br>
 							available <code>GET</code> arguments: 
 							<ul>
-                                <li>dither (o4x4 | noise | bayer)</li>
-                                <li><b>x (width)</b></li>
-                                <li><b>y (height)</b></li>
-                                <li>pf (printfeeds; # of copys to print; zero is supported, default is 1)</li>
+								<li>dither (o4x4 | noise | bayer)</li>
+								<li><b>x (width)</b></li>
+								<li><b>y (height)</b></li>
+								<li>pf (printfeeds; # of copys to print; zero is supported, default is 1)</li>
 								<li>resize</li>
 								<li>stretch</li>
 								<li>rotate</li>
@@ -110,22 +110,22 @@
 							</ul>
 						</li>
 					<ul>
-                </p>
-            </div>
-            <div class="col-md-4">
-                <span class="bi bi-tools h1"></span>
-                <h4>Print More?</h4>
-                <p>
+				</p>
+			</div>
+			<div class="col-md-4">
+				<span class="bi bi-tools h1"></span>
+				<h4>Print More?</h4>
+				<p>
 					<a class="btn btn-primary" href="/" role="button">To the Form!</a>
-                </p>
-            </div>
-        </div>
+				</p>
+			</div>
+		</div>
 
-        <footer style="margin-top: 2em">
-            Made with
-            <i class="bi bi-heart-fill" style="color: red"></i> by Riley © 2024 &lt;riley (at) e926 (dot) de &gt;
-        </footer>
-    </div>
+		<footer style="margin-top: 2em">
+			Made with
+			<i class="bi bi-heart-fill" style="color: red"></i> by Riley © 2024 &lt;riley (at) e926 (dot) de &gt;
+		</footer>
+	</div>
 </body>
 
 </html>
