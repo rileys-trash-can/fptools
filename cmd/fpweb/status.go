@@ -52,7 +52,7 @@ func doStatus() {
 		select {
 		case now := <-t.C:
 			for k, s := range statusMap {
-				if now.Before(s.updated.Add(livetime)) {
+				if s.updated.Add(livetime).Before(now) {
 					log.Printf("removing job %s last updated %s", s.UUID, s.updated)
 
 					delete(statusMap, k)
