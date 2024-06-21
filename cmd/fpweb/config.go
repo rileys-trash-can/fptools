@@ -12,7 +12,9 @@ type Config struct {
 	PrinterPort  string `yaml:"printer.port"`
 	PrinterCType string `yaml:"printer.type"`
 
-	Listen string `yaml:"listen"`
+	Listen        string `yaml:"listen"`
+	Saves         string `yaml:"saves"`
+	MaxPrintCount uint   `yaml:"maxpfcount"`
 }
 
 var config *Config

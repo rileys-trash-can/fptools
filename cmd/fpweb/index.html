@@ -11,41 +11,80 @@
     <style>
         .form, ul {
         		text-align: left;
-        	}
+        }
+
+        .hidden {
+        	visibility: hidden;
+        	width: 0;
+        }
     </style>
 
-	<script>
-		function dofunc() {
-			if(document.getElementById("preset").func)
-				eval(document.getElementById("preset").func) // bremium code
-			else
-				applyrecommended()
-		}
-	
-		function applyrecommended() {
-			document.getElementsByName("dither")[0].value = "bayer"
-			document.getElementsByName("resize")[0].checked = "on"
-			document.getElementsByName("rotate")[0].checked = "on"
-			document.getElementsByName("centerh")[0].checked = "on"
-			document.getElementsByName("centerv")[0].checked = "on"
-
-			document.getElementById("preset").innerHTML = "reset form"
-			document.getElementById("preset").func = "resetform()"
-		}
-
-		function resetform() {
-			document.getElementsByName("dither")[0].value = ""
-			document.getElementsByName("resize")[0].checked = ""
-			document.getElementsByName("stretch")[0].checked = ""
-			document.getElementsByName("rotate")[0].checked = ""
-			document.getElementsByName("centerh")[0].checked = ""
-			document.getElementsByName("centerv")[0].checked = ""
-			document.getElementsByName("tiling")[0].checked = ""
-
-			document.getElementById("preset").innerHTML = "apply recommened"
-			document.getElementById("preset").func = "applyrecommended()"
-		}
-	</script>
+    <script>
+        function dofunc() {
+        			if(document.getElementById("preset").func)
+        				eval(document.getElementById("preset").func) // bremium code
+        			else
+        				applyrecommended()
+        		}
+        	
+        		function applyrecommended() {
+        			document.getElementsByName("dither")[0].value = "bayer"
+        			document.getElementsByName("resize")[0].checked = "on"
+        			document.getElementsByName("rotate")[0].checked = "on"
+        			document.getElementsByName("centerh")[0].checked = "on"
+        			document.getElementsByName("centerv")[0].checked = "on"
+        
+        			document.getElementById("preset").innerHTML = "reset form"
+        			document.getElementById("preset").func = "resetform()"
+        		}
+        
+        		function resetform() {
+        			document.getElementsByName("dither")[0].value = ""
+        			document.getElementsByName("resize")[0].checked = ""
+        			document.getElementsByName("stretch")[0].checked = ""
+        			document.getElementsByName("rotate")[0].checked = ""
+        			document.getElementsByName("centerh")[0].checked = ""
+        			document.getElementsByName("centerv")[0].checked = ""
+        			document.getElementsByName("tiling")[0].checked = ""
+        
+        			document.getElementById("preset").innerHTML = "apply recommened"
+        			document.getElementById("preset").func = "applyrecommended()"
+        		}
+        
+        		let sizes = {
+        			"800x1200": true,
+        			"800x400": true
+        		}
+        
+        		function manualsizechange() {
+        			let x = document.getElementsByName("x")[0].value
+        			let y = document.getElementsByName("y")[0].value
+        
+        			let size = `${x}x${y}`
+        
+        			if(sizes[size])
+        				document.getElementById("sizeselector").value = size
+        			else 
+        				document.getElementById("sizeselector").value = "custom"
+        		}
+        
+        		function changesize() {
+        			let size = document.getElementById("sizeselector").value
+        			if(size == "custom") {
+        				return
+        			} else {
+        				
+        			}
+        
+        			let spl = size.split("x"); // 100x150
+        			let x = Number(spl[0]);
+        			let y = Number(spl[1]);
+        			console.log("width", x, "height", y);
+        
+        			document.getElementsByName("x")[0].value = x; // 100
+        			document.getElementsByName("y")[0].value = y; // 150
+        		}
+    </script>
 </head>
 
 <body>
@@ -58,10 +97,10 @@
             <div class="col-md-6">
                 <h4>Print NOW!</h4>
                 <form class="form" action="/api/print" method="POST" enctype="multipart/form-data">
-					<div class="form-group">
-						<label for="file">Image Upload (png / jpg / bmp / pcx / prbuf / gif)</label>
+                    <div class="form-group">
+                        <label for="file">Image Upload (png / jpg / bmp / pcx / prbuf / gif)</label>
                         <input type="file" class="form-control-file" name="file" id="file">
-					</div>
+                    </div>
                     <div class="form-group">
                         <label for="dither">Dither</label>
                         <select name="dither" class="form-control" id="dither">
@@ -71,70 +110,118 @@
 					      <option value="bayer">Bayer</option>
 					    </select>
                     </div>
+
+                    <label for="sizeselector">Label Size</label>
+                    <div class="form-row align-items-center">
+                        <div class="col-sm-6">
+                            <select class="mb-2 form-control" onchange="changesize()" id="sizeselector" id="dither">
+						      <option value="800x1200" selected>100 x 150mm (800x1200 px)</option>
+						      <option value="800x400">100 x 50mm (800x400 px)</option>
+						      <option value="custom">Custom</option>
+						    </select>
+                        </div>
+
+                        <div class="col-sm-3 input-group">
+                            <label class="sr-only" for="x">width</label>
+                            <div class="input-group-prepend">
+                                <div class="input-group-text">w</div>
+                            </div>
+                            <input type="text" class="form-control" oninput="manualsizechange()" id="x" name="x" placeholder="width" value="800">
+                        </div>
+                        <div class="col-sm-3 input-group">
+                            <label class="sr-only" for="y">height</label>
+                            <div class="input-group-prepend">
+                                <div class="input-group-text">y</div>
+                            </div>
+                            <input type="text" class="form-control" oninput="manualsizechange()" id="y" name="y" placeholder="heigt" value="1200">
+                        </div>
+                    </div>
+
+                    <!-- backendd -->
                     <div class="form-group">
-						<div class="form-check">
-	                        <input type="checkbox" name="resize" id="resize">
-							<label class="form-check-label" for="resize">
+                        <label>
+                       		Toggle Options:
+                       </label>
+                        <div class="form-check">
+                            <input type="checkbox" name="resize" id="resize">
+                            <label class="form-check-label" for="resize">
 					        	Resize To Fit
 					     	</label>
-					     	<br>
+                            <br>
 
-	                        <input type="checkbox" name="stretch" id="stretch">
-							<label class="form-check-label" for="stretch">
+                            <input type="checkbox" name="stretch" id="stretch">
+                            <label class="form-check-label" for="stretch">
 					        	Stretch To Fit
 					     	</label>
-					     	<br>
+                            <br>
 
-	                        <input type="checkbox" name="rotate" id="rotate">
-							<label class="form-check-label" for="rotate">
+                            <input type="checkbox" name="rotate" id="rotate">
+                            <label class="form-check-label" for="rotate">
 					        	Rotate To Fit
 					     	</label>
-					     	<br>
+                            <br>
 
-	                        <input type="checkbox" name="centerh" id="centerh">
-							<label class="form-check-label" for="centerh">
+                            <input type="checkbox" name="centerh" id="centerh">
+                            <label class="form-check-label" for="centerh">
 					        	Center Horizontally
 					     	</label>
-					     	<br>
+                            <br>
 
-	                        <input type="checkbox" name="centerv" id="centerv">
-							<label class="form-check-label" for="centerv">
+                            <input type="checkbox" name="centerv" id="centerv">
+                            <label class="form-check-label" for="centerv">
 					        	Center Vertically
 					     	</label>
-					     	<br>
+                            <br>
 
-	                        <input type="checkbox" name="tiling" id="tiling">
-							<label class="form-check-label" for="tiling">
-					        	Tiling
+                            <input type="checkbox" name="tiling" id="tiling">
+                            <label class="form-check-label" for="tiling">
+					        	Tiling (not implemented)
 					     	</label>
-					  </div>
-					</div>
-                    <button type="submit" class="btn btn-primary">Print NOW!</button>
-                    <button type="button" class="btn btn-secondary" id="preset" onclick="dofunc()">apply recommended</button>
+                        </div>
+                    </div>
+
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <div class="input-group col-auto">
+                            <span class="input-group-text" id="inputGroupPrepend">PF-#</span>
+                            <input min="0" max="10" value="1" type="number" id="typeNumber" class="form-control" name="pf" />
+                            <!-- TODO change max from config value -->
+
+                            </div>
+                        </div>
+                        <div class="col-auto">
+							<button type="submit" class="btn btn-primary">Print NOW!</button>
+                        </div>
+						<div class="col-auto">
+							<button type="button" class="btn btn-secondary" id="preset" onclick="dofunc()">apply recommended</button>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="col-md-6">
                 <span class="bi bi-tools h1"></span>
                 <h4>API Usage:</h4>
                 <p>
-					<ul>
-						<li>
-							PUT /api/print to print image
-							<br>
-							<code>$ curl -X PUT -T &lt;file png/bmp/prbuf/rll/gif&gt; &lt;host&gt;/print</code>
-							<br>
-							available <code>GET</code> arguments: 
-							<ul>
-								<li>dither (o4x4 | noise | bayer)</li>
-								<li>resize</li>
-								<li>stretch</li>
-								<li>rotate</li>
-								<li>centerh</li>
-								<li>centerv</li>
-								<li>tiling</li>
-							</ul>
-						</li>
-					<ul>
+                    <ul>
+                        <li>
+                            PUT /api/print to print image
+                            <br>
+                            <code>$ curl -X PUT -T &lt;file png/bmp/prbuf/rll/gif&gt; &lt;host&gt;/print</code>
+                            <br> available <code>GET</code> arguments:
+                            <ul>
+                                <li>dither (o4x4 | noise | bayer)</li>
+                                <li><b>x (width)</b></li>
+                                <li><b>y (height)</b></li>
+                                <li>pf (printfeeds; # of copys to print; zero is supported, default is 1)</li>
+                                <li>resize</li>
+                                <li>stretch</li>
+                                <li>rotate</li>
+                                <li>centerh</li>
+                                <li>centerv</li>
+                                <li>tiling</li>
+                            </ul>
+                        </li>
+                        <ul>
                 </p>
             </div>
         </div>

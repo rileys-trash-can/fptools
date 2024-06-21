@@ -16,7 +16,7 @@ import (
 )
 
 func SaveImage(img image.Image, name string) (string, error) {
-	p := "saves/" + name + ".png"
+	p := GetConfig().Saves + name + ".png"
 
 	return p, saveImage(p, img, "png")
 }

@@ -17,6 +17,7 @@
     	let printID = "{{ .PrintID }}"
  		const status_endpoint = `/api/job/${printID}`
 		let i  = 0
+		let reload = false
 		let errors = 0
 
     	let id = setInterval(
@@ -31,8 +32,10 @@
 					status.innerHTML = d.message + " " +
 						+ (Math.floor(d.progress*1000)/10) + "%"
 						+ (d.done ? ("") : (".".repeat((i)%4)))
-					if(d.reload)
+					if(d.reload & !reload) {
+					reload = true
 						document.getElementById("preview").src += "?new"
+}
 
 					if(d.progress < 0) // error
 						status.style = "color:red"
@@ -61,7 +64,7 @@
 	    			}
 	    		}
     		},
-    		200
+    		500
     	)
     </script>
 </head>
@@ -94,7 +97,10 @@
 							<br>
 							available <code>GET</code> arguments: 
 							<ul>
-								<li>dither (o4x4 | noise | bayer)</li>
+                                <li>dither (o4x4 | noise | bayer)</li>
+                                <li><b>x (width)</b></li>
+                                <li><b>y (height)</b></li>
+                                <li>pf (printfeeds; # of copys to print; zero is supported, default is 1)</li>
 								<li>resize</li>
 								<li>stretch</li>
 								<li>rotate</li>

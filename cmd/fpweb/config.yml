@@ -3,3 +3,5 @@ printer.port: "/dev/usb/lp0"
 printer.type: ""
 
 listen: "[::]:8070"
+saves: "saves/"
+maxpfcount: 1

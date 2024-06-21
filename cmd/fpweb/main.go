@@ -17,6 +17,7 @@ import (
 	"log"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"text/template"
 
 	// image stuffs
@@ -181,6 +182,59 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job.ditherer = DitherFromString(dname)
+
+	job.PFCount = 1
+	pfs := q["pf"]
+	if len(pfs) > 0 {
+		i, err := strconv.ParseUint(pfs[0], 10, 32)
+		job.PFCount = uint(i)
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Invalid PF Count: " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	sizexs, sizeys := q["x"], q["y"]
+	if len(sizexs) == 0 || len(sizeys) == 0 {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "No Size of Label Specified",
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	x64, err := strconv.ParseUint(sizexs[0], 10, 31)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid width: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	y64, err := strconv.ParseUint(sizeys[0], 10, 31)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid height: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	job.LabelSize = image.Pt(int(x64), int(y64))
 
 	img, ifmt, err := image.Decode(bytes.NewBuffer(data))
 	if err != nil {
@@ -406,6 +460,58 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 		opttiling:  BoolFromString(r.FormValue("tiling")), //TODO: use
 	}
 
+	job.PFCount = 1
+	if len(r.Form["pf"]) > 0 {
+		i, err := strconv.ParseUint(r.FormValue("pf"), 10, 32)
+		job.PFCount = uint(i)
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Invalid PF Count: " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	sizexs, sizeys := r.FormValue("x"), r.FormValue("y")
+	if len(sizexs) == 0 || len(sizeys) == 0 {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "No Size of Label Specified",
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	x64, err := strconv.ParseUint(sizexs, 10, 32)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid width: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	y64, err := strconv.ParseUint(sizeys, 10, 32)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid height: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	job.LabelSize = image.Pt(int(x64), int(y64))
+
 	img, ifmt, err := image.Decode(file)
 	if err != nil {
 		imageUpdateCh <- Status{
@@ -453,6 +559,7 @@ type JobStatusPageArgs struct {
 
 func handleGetImg(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
+	conf := GetConfig()
 
 	v := mux.Vars(r)
 	t, ok := v["uuid"]
@@ -465,8 +572,8 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	log.Printf("Serving %s", "saves/"+uid.String()+".png")
-	http.ServeFile(w, r, "saves/"+uid.String()+".png")
+	log.Printf("Serving %s", conf.Saves+uid.String()+".png")
+	http.ServeFile(w, r, conf.Saves+uid.String()+".png")
 }
 
 func T[K any](c bool, a, b K) K {

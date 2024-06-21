@@ -21,7 +21,9 @@ type PrintJob struct {
 	Img  image.Image
 	UUID uuid.UUID
 
-	ditherer Filter
+	PFCount   uint
+	LabelSize image.Point
+	ditherer  Filter
 
 	optresize  bool
 	optstretch bool
@@ -53,7 +55,6 @@ func goPrintQ() {
 			}
 
 			//TODO more config
-			var maxwidth, maxheight = 800, 1200
 			var method = imaging.Lanczos
 
 			img := job.Img
@@ -68,7 +69,7 @@ func goPrintQ() {
 			}
 			if job.optrotate {
 				log.Printf("testing rotate")
-				if (maxwidth > maxheight) != (size.X > size.Y) {
+				if (job.LabelSize.X > job.LabelSize.Y) != (size.X > size.Y) {
 					log.Printf("rotating...")
 					img = imaging.Rotate90(img)
 				}
@@ -83,17 +84,17 @@ func goPrintQ() {
 			if job.optresize {
 				log.Printf("resize; stretch: %t", job.optstretch)
 				if job.optstretch {
-					img = imaging.Resize(img, maxwidth, maxheight, method)
+					img = imaging.Resize(img, job.LabelSize.X, job.LabelSize.Y, method)
 				} else {
 					size = img.Bounds().Size()
 
-					px := float32(size.X) / float32(maxwidth)
-					py := float32(size.Y) / float32(maxheight)
+					px := float32(size.X) / float32(job.LabelSize.X)
+					py := float32(size.Y) / float32(job.LabelSize.Y)
 
 					if px > py {
-						img = imaging.Resize(img, maxwidth, 0, method)
+						img = imaging.Resize(img, job.LabelSize.X, 0, method)
 					} else {
-						img = imaging.Resize(img, 0, maxheight, method)
+						img = imaging.Resize(img, 0, job.LabelSize.Y, method)
 					}
 				}
 			}
@@ -105,16 +106,16 @@ func goPrintQ() {
 				Done:     false,
 			}
 			if job.optcenterh || job.optcenterv {
-				nimg := imaging.New(maxwidth, maxheight, color.White)
+				nimg := imaging.New(job.LabelSize.X, job.LabelSize.Y, color.White)
 				size = img.Bounds().Size()
 
 				var x, y = 0, 0
 				if job.optcenterh {
-					x = maxwidth/2 - size.X/2
+					x = job.LabelSize.X/2 - size.X/2
 				}
 
 				if job.optcenterv {
-					y = maxheight/2 - size.Y/2
+					y = job.LabelSize.Y/2 - size.Y/2
 				}
 
 				draw.Draw(nimg,
@@ -159,32 +160,36 @@ func goPrintQ() {
 			}
 
 			if !*OptDryRun {
-				err = printer.PrintChunked(img, 0, 0)
-				if err != nil {
-					imageUpdateCh <- Status{
-						UUID:     job.UUID,
-						Step:     "Uploading Data: " + err.Error(),
-						Progress: -1,
-						Done:     true,
+				// PFCount of 0 is no print
+				if job.PFCount > 0 {
+					err = printer.PrintChunked(img, 0, 0)
+					if err != nil {
+						imageUpdateCh <- Status{
+							UUID:     job.UUID,
+							Step:     "Uploading Data: " + err.Error(),
+							Progress: -1,
+							Done:     true,
+						}
+
+						continue
 					}
 
-					continue
-				}
+					err = printer.PF(job.PFCount)
+					if err != nil {
+						imageUpdateCh <- Status{
+							UUID:     job.UUID,
+							Step:     err.Error(),
+							Progress: -1,
+							Done:     true,
+						}
 
-				err = printer.PF(1)
-				if err != nil {
-					imageUpdateCh <- Status{
-						UUID:     job.UUID,
-						Step:     err.Error(),
-						Progress: -1,
-						Done:     true,
+						continue
 					}
-
-					continue
 				}
 			} else {
 				conf := GetConfig()
 				ctype := T(*PrinterAddressType != "", *PrinterAddressType, conf.PrinterCType)
+				log.Printf("Printing %d of size: %+v", job.PFCount, img.Bounds().Size())
 
 				if ctype == "serial" {
 					time.Sleep(time.Second * 12)
@@ -192,7 +197,6 @@ func goPrintQ() {
 
 				if ctype == "net" {
 					time.Sleep(time.Second * 5)
-
 				}
 			}
 
@@ -218,23 +222,38 @@ func OpenPrinter() *fp.Printer {
 	var err error
 	var p *fp.Printer
 
-	switch ctype {
-	case "net":
-		log.Printf("Dialing %s", host)
-		p, err = fp.DialPrinter(host)
-		if err != nil {
-			log.Fatalf("Printer %s", err)
+	errors := 0
+loop:
+	for {
+		switch ctype {
+		case "net":
+			log.Printf("Dialing %s", host)
+			p, err = fp.DialPrinter(host)
+			if err == nil {
+				break loop
+			}
+
+			log.Printf("Error dialing %s: %s", host, err)
+
+		case "serial":
+			log.Printf("Open %s", port)
+			p, err = fp.OpenPrinter(port)
+			if err == nil {
+				break loop
+			}
+
+			log.Printf("Error opening %s: %s", port, err)
+
+		default:
+			log.Fatalf("Invaid connection type '%s', choose between 'net' and 'serial'", ctype)
 		}
 
-	case "serial":
-		log.Printf("Open %s", port)
-		p, err = fp.OpenPrinter(port)
-		if err != nil {
-			log.Fatalf("Printer %s", err)
-		}
+		time.Sleep(time.Second * 5)
 
-	default:
-		log.Fatalf("Invaid connection type '%s', choose between 'net' and 'serial'", ctype)
+		errors++
+		if errors > 3 {
+			log.Fatalf("more than 3 errors, aborting: %s", err)
+		}
 	}
 
 	if *OptBeep {
