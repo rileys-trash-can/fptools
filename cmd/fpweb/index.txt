@@ -2,8 +2,11 @@ Usage:
 	PUT /api/print to print image
 		curl -X PUT -T <file png/bmp/prbuf/rll/gif> <host>/print
 		possible GET arguments
-			- dither (o4x4 | noise | bayer)</li>
-			- resize
+			- dither (o4x4 | noise | bayer)
+			- x (width)
+			- y (height)
+			- pf (printfeeds; # of copys to print; zero is supported, default is 1)
+ 			- resize
 			- stretch
 			- rotate
 			- centerh
