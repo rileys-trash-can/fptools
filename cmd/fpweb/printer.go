@@ -54,7 +54,7 @@ func goPrintQ() {
 				Done:     false,
 			}
 
-			//TODO more config
+			//TODO more options
 			var method = imaging.Lanczos
 
 			img := job.Img

@@ -39,7 +39,7 @@ var (
 	//go:embed index.html
 	eIndex []byte
 
-	//go:embed index.tmpl.html
+	//go:embed jobstatus.template.html
 	eStatus string
 
 	tStatus *template.Template = func() *template.Template {
