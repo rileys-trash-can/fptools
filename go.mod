@@ -12,4 +12,12 @@ require (
 	github.com/samuel/go-pcx v0.0.0-20210515040514-6a5ce4d132f7
 	golang.org/x/image v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/driver/sqlite v1.5.6
+	gorm.io/gorm v1.25.10
+)
+
+require (
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 )

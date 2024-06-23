@@ -15,6 +15,7 @@ type Config struct {
 	Listen        string `yaml:"listen"`
 	Saves         string `yaml:"saves"`
 	MaxPrintCount uint   `yaml:"maxpfcount"`
+	DB            string `yaml:"databasepath"`
 }
 
 var config *Config

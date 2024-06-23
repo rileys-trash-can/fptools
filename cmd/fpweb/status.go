@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"log"
 	"time"
@@ -19,13 +20,17 @@ type StatusReq struct {
 }
 
 type Status struct {
-	UUID uuid.UUID
+	UUID uuid.UUID `json:"jobid,omitempty"`
 
-	Step     string
-	Reload   bool
-	Done     bool
-	Progress float32
-	updated  time.Time
+	Step         string    `json:"message,omitempty"`
+	CurrentImage uuid.UUID `json:"image,omitempty"`
+	Done         bool      `json:"done,omitempty"`
+	Progress     float32   `json:"progress,omitempty"`
+	updated      time.Time `json:"-"`
+}
+
+func (s *Status) String() string {
+	return fmt.Sprintf("%s %.2f%%", s.Step, s.Progress*100)
 }
 
 func GetStatus(uuid uuid.UUID) *Status {

@@ -80,10 +80,7 @@ func main() {
 
 	gmux := mux.NewRouter()
 
-	gmux.Path("/api").
-		Methods("GET").
-		Handler(ErrorHandlerMiddleware(&handleFile{"text/plain", eIndexApi}))
-
+	// static stuff
 	gmux.Path("/").
 		Methods("GET").
 		Handler(ErrorHandlerMiddleware(&handleFile{"text/html", eIndex}))
@@ -92,14 +89,11 @@ func main() {
 		Methods("GET").
 		Handler(ErrorHandlerMiddleware(&handleFile{"text/css", eBScss}))
 
-	gmux.Path("/api/print").
-		Methods("PUT").
-		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrint)))
-
-	gmux.Path("/api/job/{uuid}").
+	gmux.Path("/api").
 		Methods("GET").
-		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handleJobAPI)))
+		Handler(ErrorHandlerMiddleware(&handleFile{"text/plain", eIndexApi}))
 
+	// ui stuff
 	gmux.Path("/img/{uuid}").
 		Methods("GET").
 		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handleGetImg)))
@@ -111,6 +105,19 @@ func main() {
 	gmux.Path("/api/print").
 		Methods("POST").
 		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrintPOST)))
+
+	// api stuff
+	gmux.Path("/api/print").
+		Methods("PUT").
+		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrint)))
+
+	gmux.Path("/api/job/{uuid}").
+		Methods("GET").
+		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handleJobAPI)))
+
+	gmux.Path("/api/list").
+		Methods("GET").
+		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handleList)))
 
 	addr := T(*ListenAddr != "", *ListenAddr, conf.Listen)
 
@@ -165,6 +172,7 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 	job := &PrintJob{
 		UUID: uid,
 
+		public:     len(q["public"]) > 0,
 		optresize:  len(q["resize"]) > 0,
 		optstretch: len(q["stretch"]) > 0,
 		optrotate:  len(q["rotate"]) > 0,
@@ -236,19 +244,32 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 
 	job.LabelSize = image.Pt(int(x64), int(y64))
 
-	img, ifmt, err := image.Decode(bytes.NewBuffer(data))
+	// image handeling
+	imgcfg, imgfmt, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
-		imageUpdateCh <- Status{
-			UUID:     uid,
-			Step:     "Invalid Image: " + err.Error(),
-			Progress: -1,
-			Done:     true,
-		}
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Failed to Decode Image (header): " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
 
-		return
+			return
+		}
 	}
 
-	job.Img = img
+	job.UnprocessedImage = Image{
+		UUID: uuid.New(),
+
+		IsProcessed: false,
+		Ext:         imgfmt,
+		Data:        data,
+		Public:      job.public,
+		Name:        "",
+	}
+
+	GetDB().Create(&job.UnprocessedImage)
 
 	select {
 	case printQ <- job:
@@ -263,7 +284,7 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 			Done:     true,
 		}
 	}
-	log.Printf("[POST] Received Image in %s format bounds: %+v", ifmt, img.Bounds())
+	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
 }
 
 var ErrorHandlerMiddleware = mux.MiddlewareFunc(func(next http.Handler) http.Handler {
@@ -291,7 +312,12 @@ func (m *errMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Location", "/")
 
 			w.WriteHeader(500)
-			fmt.Fprintf(w, "{\"done\":true,\"message\":\"%s\",\"error\":true}", err)
+			enc := json.NewEncoder(w)
+			enc.Encode(&Status{
+				Progress: -1,
+				Done:     true,
+				Step:     fmt.Sprint(err),
+			})
 			return
 
 		default:
@@ -352,13 +378,6 @@ func BoolFromString(n string) bool {
 	return false
 }
 
-type JobStatusResponse struct {
-	Message  string  `json:"message"`
-	Progress float32 `json:"progress"`
-	Done     bool    `json:"done"`
-	Reload   bool    `json:"reload"`
-}
-
 func handleJob(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	w.Header().Set("Content-Type", "text/html")
@@ -378,10 +397,10 @@ func handleJob(w http.ResponseWriter, r *http.Request) {
 		panic("Invalid Status // uid unknown")
 	}
 
-	err = tStatus.Execute(w, JobStatusPageArgs{
-		PrintID:       uid.String(),
-		InitialStatus: fmt.Sprintf("%s %.2f%%", status.Step, status.Progress*100),
-	})
+	err = tStatus.Execute(w, status)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func handleJobAPI(w http.ResponseWriter, r *http.Request) {
@@ -408,13 +427,7 @@ func handleJobAPI(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[GET] /api/status/%s\n%+v", id, status)
 
 	enc := json.NewEncoder(w)
-	err = enc.Encode(&JobStatusResponse{
-		Message:  status.Step,
-		Progress: status.Progress,
-
-		Done:   status.Done,
-		Reload: status.Reload,
-	})
+	err = enc.Encode(status)
 	if err != nil {
 		panic(err)
 	}
@@ -452,6 +465,7 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 
 		ditherer: DitherFromString(r.FormValue("dither")),
 
+		public:     BoolFromString(r.FormValue("public")),
 		optresize:  BoolFromString(r.FormValue("resize")),
 		optstretch: BoolFromString(r.FormValue("stretch")),
 		optrotate:  BoolFromString(r.FormValue("rotate")),
@@ -512,11 +526,12 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 
 	job.LabelSize = image.Pt(int(x64), int(y64))
 
-	img, ifmt, err := image.Decode(file)
+	// image handeling
+	data, err := io.ReadAll(file)
 	if err != nil {
 		imageUpdateCh <- Status{
 			UUID:     uid,
-			Step:     "Invalid Image: " + err.Error(),
+			Step:     "Failed to Read Image: " + err.Error(),
 			Progress: -1,
 			Done:     true,
 		}
@@ -524,7 +539,31 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job.Img = img
+	imgcfg, imgfmt, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Failed to Decode Image (header): " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	job.UnprocessedImage = Image{
+		UUID: uuid.New(),
+
+		IsProcessed: false,
+		Ext:         imgfmt,
+		Data:        data,
+		Public:      job.public,
+		Name:        header.Filename,
+	}
+
+	GetDB().Create(&job.UnprocessedImage)
 
 	select {
 	case printQ <- job:
@@ -539,7 +578,7 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 			Done:     true,
 		}
 	}
-	log.Printf("[POST] Received Image in %s format bounds: %+v", ifmt, img.Bounds())
+	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
 }
 
 func b64image(img image.Image) string {
@@ -552,9 +591,49 @@ func b64image(img image.Image) string {
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(b.Bytes())
 }
 
-type JobStatusPageArgs struct {
-	InitialStatus string
-	PrintID       string
+type ImageList struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+	Total  int `json:"total"`
+
+	Images []Image `json:"images"`
+}
+
+func handleList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	var (
+		optall = len(q["all"]) > 0
+	)
+
+	enc := json.NewEncoder(w)
+
+	db := GetDB().Model(&Image{})
+
+	if optall {
+		log.Printf("requested all ")
+		var length int
+		const limit = 10
+
+		db.Select("count(1)").Find(&length)
+		db = db.Select("UUID", "UnProcessed", "Processed",
+			"IsProcessed", "Ext", "Public", "Name")
+
+		var images []Image
+
+		for i := 0; i < length; i += limit {
+			db.Offset(i).Limit(limit).Find(&images)
+
+			for k := 0; k < len(images); k++ {
+				err := enc.Encode(images[k])
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+	}
 }
 
 func handleGetImg(w http.ResponseWriter, r *http.Request) {
@@ -572,8 +651,10 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	log.Printf("Serving %s", conf.Saves+uid.String()+".png")
-	http.ServeFile(w, r, conf.Saves+uid.String()+".png")
+	log.Printf("Serving image %s", conf.Saves+uid.String())
+	img := GetImage(uid)
+
+	w.Write(img.Data)
 }
 
 func T[K any](c bool, a, b K) K {

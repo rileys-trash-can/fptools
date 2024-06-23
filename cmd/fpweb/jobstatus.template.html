@@ -14,10 +14,10 @@
 			}
 	</style>
 	<script>
-		let printID = "{{ .PrintID }}"
+		let printID = "{{ .UUID }}"
  		const status_endpoint = `/api/job/${printID}`
 		let i  = 0
-		let reload = false
+		let image = "{{ .CurrentImage }}"
 		let errors = 0
 
 		let id = setInterval(
@@ -32,10 +32,10 @@
 					status.innerHTML = d.message + " " +
 						+ (Math.floor(d.progress*1000)/10) + "%"
 						+ (d.done ? ("") : (".".repeat((i)%4)))
-					if(d.reload & !reload) {
-					reload = true
-						document.getElementById("preview").src += "?new"
-}
+					if(d.image && d.image != image) {
+						document.getElementById("preview").src = `/img/${d.image}`
+						image = d.image
+					}
 
 					if(d.progress < 0) // error
 						status.style = "color:red"
@@ -74,7 +74,7 @@
 		<h1>Printing...</h1>
 		<p class="lead">
 			your image is now being printed...
-			<span id="status">{{ .InitialStatus }}</span>
+			<span id="status">{{ .String }}</span>
 		</p>
 		<hr>
 
@@ -82,7 +82,7 @@
 			<div class="col-md-4">
 				<h4>Preview:</h4>
 				<figure class="figure col-md-12">
-					<img id="preview" src="/img/{{ .PrintID }}" class="figure-img img-fluid rounded" alt="preview of printed image">
+					<img id="preview" src="/img/{{ .CurrentImage }}" class="figure-img img-fluid rounded" alt="preview of printed image">
 				</figure>
 			</div>
 			<div class="col-md-4">

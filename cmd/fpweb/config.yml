@@ -5,3 +5,4 @@ printer.type: ""
 listen: "[::]:8070"
 saves: "saves/"
 maxpfcount: 1
+databasepath: "data.db"
