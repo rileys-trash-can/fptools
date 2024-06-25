@@ -295,6 +295,14 @@ type errMiddleware struct {
 	next http.Handler
 }
 
+type ErrorRes struct {
+	Error any `json:"error"`
+}
+
+func (e *ErrorRes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ErrorRes{Error: fmt.Sprint(e.Error)})
+}
+
 func (m *errMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		err := recover()
@@ -313,10 +321,8 @@ func (m *errMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			w.WriteHeader(500)
 			enc := json.NewEncoder(w)
-			enc.Encode(&Status{
-				Progress: -1,
-				Done:     true,
-				Step:     fmt.Sprint(err),
+			enc.Encode(&ErrorRes{
+				Error: err,
 			})
 			return
 
@@ -371,7 +377,10 @@ func DitherFromString(n string) Filter {
 }
 
 func BoolFromString(n string) bool {
-	if n == "on" {
+	switch n {
+	case "on":
+		return true
+	case "true":
 		return true
 	}
 
@@ -606,20 +615,33 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		optall = len(q["all"]) > 0
+
+		offsetstr = q["offset"]
+		limitstr  = q["limit"]
+
+		processed     = q["processed"]
+		processedType = false
 	)
+
+	if len(processed) > 0 {
+		processedType = BoolFromString(processed[0])
+	}
 
 	enc := json.NewEncoder(w)
 
 	db := GetDB().Model(&Image{})
 
 	if optall {
-		log.Printf("requested all ")
 		var length int
 		const limit = 10
 
 		db.Select("count(1)").Find(&length)
 		db = db.Select("UUID", "UnProcessed", "Processed",
 			"IsProcessed", "Ext", "Public", "Name")
+
+		if len(processed) > 0 {
+			db = db.Where("is_processed", processedType)
+		}
 
 		var images []Image
 
@@ -632,6 +654,40 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 					panic(err)
 				}
 			}
+		}
+	} else {
+		if len(offsetstr) == 0 || len(limitstr) == 0 {
+			panic("Invalid or missing offset or limit!")
+		}
+
+		offset, err := strconv.ParseUint(offsetstr[0], 10, 31)
+		if err != nil {
+			panic(err)
+		}
+
+		limit, err := strconv.ParseUint(limitstr[0], 10, 31)
+		if err != nil {
+			panic(err)
+		}
+
+		if limit > 100 {
+			panic("Invalid limit; limit > 100")
+		}
+
+		var length int
+		db.Select("count(1)").Find(&length)
+
+		var l = ImageList{
+			Offset: int(offset),
+			Limit:  int(limit),
+			Total:  length,
+		}
+		db.Select("UUID", "UnProcessed", "Processed",
+			"IsProcessed", "Ext", "Public", "Name").Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
+
+		err = enc.Encode(&l)
+		if err != nil {
+			panic(err)
 		}
 	}
 }
