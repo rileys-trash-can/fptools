@@ -16,6 +16,7 @@ type Config struct {
 	Saves         string `yaml:"saves"`
 	MaxPrintCount uint   `yaml:"maxpfcount"`
 	DB            string `yaml:"databasepath"`
+	DBType        string `yaml:"dbtype"`
 }
 
 var config *Config

@@ -74,6 +74,9 @@ func main() {
 	flag.Parse()
 	conf := GetConfig()
 
+	// verify DB is valid
+	GetDB()
+
 	if !*OptDryRun {
 		printer = OpenPrinter()
 	}

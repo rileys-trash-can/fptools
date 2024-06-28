@@ -13,6 +13,7 @@ import (
 	// image stuffs
 	"github.com/samuel/go-pcx/pcx"
 	"golang.org/x/image/bmp"
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"image"
@@ -71,9 +72,24 @@ var dbOnce sync.Once
 
 func openDB() {
 	var err error
-	db, err = gorm.Open(sqlite.Open(GetConfig().DB), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Failed to open db: %s", err)
+	conf := GetConfig()
+
+	switch conf.DBType {
+	case "sqlite":
+	case "sqlite3":
+		db, err = gorm.Open(sqlite.Open(conf.DB), &gorm.Config{})
+		if err != nil {
+			log.Fatalf("Failed to open db: %s", err)
+		}
+
+	case "mysql":
+		db, err = gorm.Open(mysql.Open(conf.DB), &gorm.Config{})
+		if err != nil {
+			log.Fatalf("Failed to open db: %s", err)
+		}
+
+	default:
+		log.Fatalf("Invalid DBType: sqlite or mysql is valid")
 	}
 
 	db.AutoMigrate(&Image{})
