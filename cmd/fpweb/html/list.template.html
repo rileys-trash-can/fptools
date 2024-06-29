@@ -35,14 +35,14 @@
 </head>
 
 <body>
-	<div class="container text-center mt-12">
-		<h1>Label Printer - Prints</h1>
+	<div class="container text-center mt-5">
+		<h1><a href="/">Label Printer</a> - Prints</h1>
 		<p class="lead">List of public prints ({{ .Limit }} / {{ .Total }})</p>
 		<hr>
 
-        <div class="row mt-12">
+        <div class="row">
 			{{ range .Images }}
-	            <div class="col-md-auto">
+	            <div class="col-md-auto mt-5">
 					<div class="card" style="width: 18rem;">
 					  <img class="card-img-top" src="img/{{ .UUID }}" alt="Card image cap">
 					  <img class="preview" src="img/{{ .Processed }}" alt="Card image cap">
