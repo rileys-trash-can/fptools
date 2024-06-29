@@ -1,10 +1,26 @@
 package main
 
 import (
+	"flag"
 	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"sync"
+)
+
+var (
+	ConfigPath = flag.String("config", "config.yml", "config to read")
+
+	ListenAddr = flag.String("listen", "", "specify port to listen on, fallback is [::]:8070")
+
+	PrinterAddressHost = flag.String("host", os.Getenv("IPL_PRINTER"), "Specify printer, can also be set by env IPL_PRINTER (net port)")
+	PrinterAddressPort = flag.String("port", os.Getenv("IPL_PORT"), "Specify printer, can also be set by env IPL_PORT (usb port)")
+
+	PrinterAddressType = flag.String("ctype", os.Getenv("IPL_CTYPE"), "Specify printer connection type, can also be set by env IPL_CTYPE")
+
+	OptVerbose = flag.Bool("verbose", false, "toggle verbose logging")
+	OptBeep    = flag.Bool("beep", true, "toggle connection-beep")
+	OptDryRun  = flag.Bool("dry-run", false, "disables connection to printer; for testing")
 )
 
 type Config struct {
