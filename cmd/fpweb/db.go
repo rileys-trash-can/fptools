@@ -11,14 +11,15 @@ import (
 	"sync"
 
 	// image stuffs
+	"github.com/rileys-trash-can/gorm-sqlite-cgo-free"
 	"github.com/samuel/go-pcx/pcx"
 	"golang.org/x/image/bmp"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"image"
 	"image/jpeg"
 	"image/png"
+	_ "modernc.org/sqlite"
 )
 
 func SaveImage(img image.Image, uuid uuid.UUID, public bool, name string) error {
