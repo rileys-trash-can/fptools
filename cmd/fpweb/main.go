@@ -10,6 +10,7 @@ import (
 	"github.com/makeworld-the-better-one/dither/v2"
 	"github.com/rileys-trash-can/libfp"
 	"log"
+	"time"
 
 	// image stuffs
 	_ "github.com/samuel/go-pcx/pcx"
@@ -89,7 +90,13 @@ func main() {
 		addr = "[::]:8070"
 	}
 
-	log.Printf("Listening on %s", addr)
+	go func() {
+		// prevent logging anomaly where it says listening on and then failed to listen&serve
+		time.Sleep(time.Millisecond * 500)
+
+		log.Printf("Listening on %s", addr)
+	}()
+
 	log.Fatalf("Failed to ListenAndServe: %s",
 		http.ListenAndServe(addr, gmux))
 }

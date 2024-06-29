@@ -48,6 +48,8 @@ func init() {
 }
 
 func doStatus() {
+	// move status and job managment to database
+
 	const livetime = time.Hour
 	statusMap := make(map[uuid.UUID]*Status)
 	t := time.NewTicker(livetime / 2)
@@ -58,7 +60,7 @@ func doStatus() {
 		case now := <-t.C:
 			for k, s := range statusMap {
 				if s.updated.Add(livetime).Before(now) {
-					log.Printf("removing job %s last updated %s", s.UUID, s.updated)
+					log.Printf("[jobclean] removing job %s last updated %s", s.UUID, s.updated)
 
 					delete(statusMap, k)
 				}

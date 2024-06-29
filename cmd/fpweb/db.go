@@ -123,7 +123,9 @@ func GetDB() *gorm.DB {
 }
 
 func encodeImage(w io.Writer, img image.Image, fmt string) (err error) {
-	log.Printf("encoding Image")
+	if *OptVerbose {
+		log.Printf("Encoding image with bounds %v in format %s", img.Bounds().Size(), fmt)
+	}
 
 	switch fmt {
 	case "png":

@@ -47,7 +47,7 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[POST] file %d bytes", len(data))
+	log.Printf("[POST] received image file; size: %d bytes", len(data))
 
 	q := r.URL.Query()
 
@@ -166,7 +166,8 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 			Done:     true,
 		}
 	}
-	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
+
+	log.Printf("[POST] Received %s Image with bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
 }
 
 func handleJob(w http.ResponseWriter, r *http.Request) {
@@ -219,7 +220,7 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 
-	log.Printf("[POST] file '%s' %d bytes", header.Filename, header.Size)
+	log.Printf("[POST] received image named '%s' sized %d bytes", header.Filename, header.Size)
 
 	job := &PrintJob{
 		UUID: uid,
@@ -378,7 +379,7 @@ func handlePrintGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[GET] print %s", uuid)
+	log.Printf("[GET] reprint of image %s", uuid)
 
 	job := &PrintJob{
 		UUID: uid,
@@ -451,7 +452,7 @@ func handlePrintGET(w http.ResponseWriter, r *http.Request) {
 			Done:     true,
 		}
 	}
-	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
+	log.Printf("[POST] reprinting %s image with bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
 }
 
 func handlePrintList(w http.ResponseWriter, r *http.Request) {

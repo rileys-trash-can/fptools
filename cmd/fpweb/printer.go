@@ -48,7 +48,7 @@ func goPrintQ() {
 		select {
 		case job := <-printQ:
 			if *OptVerbose {
-				log.Printf("Got printjob %+v", job)
+				log.Printf("[printQ] Got printjob %+v", job)
 			}
 
 			var currentimage = job.UnprocessedImage.UUID
@@ -88,9 +88,15 @@ func goPrintQ() {
 				CurrentImage: currentimage,
 			}
 			if job.optrotate {
-				log.Printf("testing rotate")
+				if *OptVerbose {
+					log.Printf("[printQ] testing rotate")
+				}
+
 				if (job.LabelSize.X > job.LabelSize.Y) != (size.X > size.Y) {
-					log.Printf("rotating...")
+					if *OptVerbose {
+						log.Printf("[printQ] rotating...")
+					}
+
 					img = imaging.Rotate90(img)
 				}
 
@@ -105,7 +111,10 @@ func goPrintQ() {
 				CurrentImage: currentimage,
 			}
 			if job.optresize {
-				log.Printf("resize; stretch: %t", job.optstretch)
+				if *OptVerbose {
+					log.Printf("[printQ] resize; stretch: %t", job.optstretch)
+				}
+
 				if job.optstretch {
 					img = imaging.Resize(img, job.LabelSize.X, job.LabelSize.Y, method)
 				} else {
@@ -132,6 +141,10 @@ func goPrintQ() {
 				CurrentImage: currentimage,
 			}
 			if job.optcenterh || job.optcenterv {
+				if *OptVerbose {
+					log.Printf("[printQ] centerh %t centerv: %t", job.optcenterh, job.optcenterv)
+				}
+
 				nimg := imaging.New(job.LabelSize.X, job.LabelSize.Y, color.White)
 				size = img.Bounds().Size()
 
@@ -163,7 +176,9 @@ func goPrintQ() {
 				CurrentImage: currentimage,
 			}
 			if job.ditherer != nil {
-				log.Printf("Dithering with %T", job.ditherer)
+				if *OptVerbose {
+					log.Printf("[printQ] Dithering with %T", job.ditherer)
+				}
 
 				img = job.ditherer.Apply(img)
 				imgchanged = true
@@ -211,6 +226,8 @@ func goPrintQ() {
 				Done:         false,
 			}
 
+			log.Printf("[printQ] printing %d of size: %+v", job.PFCount, img.Bounds().Size())
+
 			if !*OptDryRun {
 				// PFCount of 0 is no print
 				if job.PFCount > 0 {
@@ -243,7 +260,6 @@ func goPrintQ() {
 			} else {
 				conf := GetConfig()
 				ctype := T(*PrinterAddressType != "", *PrinterAddressType, conf.PrinterCType)
-				log.Printf("Printing %d of size: %+v", job.PFCount, img.Bounds().Size())
 
 				if ctype == "serial" {
 					time.Sleep(time.Second * 12)

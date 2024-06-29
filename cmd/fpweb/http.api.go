@@ -115,7 +115,10 @@ func handleJobAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 
-	log.Printf("[GET] /api/status/%s\n%+v", id, status)
+	log.Printf("[GET] /api/status/%s", id)
+	if *OptVerbose {
+		log.Printf("status: %+v", status)
+	}
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(status)
@@ -138,7 +141,10 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	log.Printf("Serving image %s", uid.String())
+	if *OptVerbose {
+		log.Printf("[GET] Serving image %s", uid.String())
+	}
+
 	img := GetImage(uid)
 
 	w.Write(img.Data)
