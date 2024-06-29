@@ -51,16 +51,19 @@ func goPrintQ() {
 				log.Printf("Got printjob %+v", job)
 			}
 
+			var currentimage = job.UnprocessedImage.UUID
+
 			imageUpdateCh <- Status{
 				UUID:         job.UUID,
 				Step:         "decode",
 				Progress:     1.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 
 			//TODO more options
 			var method = imaging.Lanczos
+			var imgchanged bool
 
 			img, _, err := image.Decode(bytes.NewReader(job.UnprocessedImage.Data))
 			if err != nil {
@@ -69,7 +72,7 @@ func goPrintQ() {
 					Step:         "Decode Image: " + err.Error(),
 					Progress:     -1,
 					Done:         true,
-					CurrentImage: job.UnprocessedImage.UUID,
+					CurrentImage: currentimage,
 				}
 
 				continue
@@ -82,7 +85,7 @@ func goPrintQ() {
 				Step:         "rotating",
 				Progress:     2.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 			if job.optrotate {
 				log.Printf("testing rotate")
@@ -90,6 +93,8 @@ func goPrintQ() {
 					log.Printf("rotating...")
 					img = imaging.Rotate90(img)
 				}
+
+				imgchanged = true
 			}
 
 			imageUpdateCh <- Status{
@@ -97,7 +102,7 @@ func goPrintQ() {
 				Step:         "resizing",
 				Progress:     3.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 			if job.optresize {
 				log.Printf("resize; stretch: %t", job.optstretch)
@@ -115,6 +120,8 @@ func goPrintQ() {
 						img = imaging.Resize(img, 0, job.LabelSize.Y, method)
 					}
 				}
+
+				imgchanged = true
 			}
 
 			imageUpdateCh <- Status{
@@ -122,7 +129,7 @@ func goPrintQ() {
 				Step:         "centering",
 				Progress:     4.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 			if job.optcenterh || job.optcenterv {
 				nimg := imaging.New(job.LabelSize.X, job.LabelSize.Y, color.White)
@@ -145,6 +152,7 @@ func goPrintQ() {
 				)
 
 				img = nimg
+				imgchanged = true
 			}
 
 			imageUpdateCh <- Status{
@@ -152,12 +160,13 @@ func goPrintQ() {
 				Step:         "dithering",
 				Progress:     5.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 			if job.ditherer != nil {
 				log.Printf("Dithering with %T", job.ditherer)
 
 				img = job.ditherer.Apply(img)
+				imgchanged = true
 			}
 
 			imageUpdateCh <- Status{
@@ -165,35 +174,40 @@ func goPrintQ() {
 				Step:         "saving",
 				Progress:     6.0 / totalSteps,
 				Done:         false,
-				CurrentImage: job.UnprocessedImage.UUID,
+				CurrentImage: currentimage,
 			}
 
-			// save processed image
-			job.ProcessedImageID = uuid.New()
-			const encoding = "png"
-			buf := &bytes.Buffer{}
-			encodeImage(buf, img, encoding)
+			// if image is unchanged, no need to save it again
+			if imgchanged {
+				// save processed image
+				job.ProcessedImageID = uuid.New()
+				const encoding = "png"
+				buf := &bytes.Buffer{}
+				encodeImage(buf, img, encoding)
 
-			GetDB().Create(&Image{
-				UUID:        job.ProcessedImageID,
-				UnProcessed: &job.UnprocessedImage.UUID,
-				Processed:   nil,
+				GetDB().Create(&Image{
+					UUID:        job.ProcessedImageID,
+					UnProcessed: &job.UnprocessedImage.UUID,
+					Processed:   nil,
 
-				IsProcessed: true,
-				Ext:         encoding,
-				Data:        buf.Bytes(),
-				Public:      job.public,
-				Name:        job.UnprocessedImage.Name + "_processed",
-			})
+					IsProcessed: true,
+					Ext:         encoding,
+					Data:        buf.Bytes(),
+					Public:      job.public,
+					Name:        job.UnprocessedImage.Name + "_processed",
+				})
 
-			GetDB().Model(&Image{}).Where("UUID", job.UnprocessedImage.UUID).
-				Update("Processed", job.ProcessedImageID)
+				GetDB().Model(&Image{}).Where("UUID", job.UnprocessedImage.UUID).
+					Update("Processed", job.ProcessedImageID)
+
+				currentimage = job.ProcessedImageID
+			}
 
 			imageUpdateCh <- Status{
 				UUID:         job.UUID,
 				Step:         "printing",
 				Progress:     7.0 / totalSteps,
-				CurrentImage: job.ProcessedImageID,
+				CurrentImage: currentimage,
 				Done:         false,
 			}
 
@@ -207,7 +221,7 @@ func goPrintQ() {
 							Step:         "Uploading Data: " + err.Error(),
 							Progress:     -1,
 							Done:         true,
-							CurrentImage: job.ProcessedImageID,
+							CurrentImage: currentimage,
 						}
 
 						continue
@@ -220,7 +234,7 @@ func goPrintQ() {
 							Step:         err.Error(),
 							Progress:     -1,
 							Done:         true,
-							CurrentImage: job.ProcessedImageID,
+							CurrentImage: currentimage,
 						}
 
 						continue
@@ -244,7 +258,7 @@ func goPrintQ() {
 				UUID:         job.UUID,
 				Step:         "done",
 				Progress:     8 / totalSteps,
-				CurrentImage: job.ProcessedImageID,
+				CurrentImage: currentimage,
 				Done:         true,
 			}
 		}

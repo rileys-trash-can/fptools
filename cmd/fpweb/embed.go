@@ -1,25 +1,46 @@
 package main
 
 import (
-	_ "embed"
+	"embed"
+	"io"
 	"text/template"
 )
 
 var (
-	//go:embed index.txt
-	eIndexApi []byte
-
-	//go:embed bs.css
-	eBScss []byte
-
-	//go:embed index.html
-	eIndex []byte
-
-	//go:embed jobstatus.template.html
-	eStatus string
+	//go:embed html
+	embedFS embed.FS
 
 	tStatus *template.Template = func() *template.Template {
-		templ, err := template.New("status").Parse(eStatus)
+		f, err := embedFS.Open("html/jobstatus.template.html")
+		if err != nil {
+			panic(err)
+		}
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			panic(err)
+		}
+
+		templ, err := template.New("status").Parse(string(data))
+		if err != nil {
+			panic(err)
+		}
+
+		return templ
+	}()
+
+	tList *template.Template = func() *template.Template {
+		f, err := embedFS.Open("html/list.template.html")
+		if err != nil {
+			panic(err)
+		}
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			panic(err)
+		}
+
+		templ, err := template.New("status").Parse(string(data))
 		if err != nil {
 			panic(err)
 		}

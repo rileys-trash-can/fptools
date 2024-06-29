@@ -126,7 +126,6 @@ func handleJobAPI(w http.ResponseWriter, r *http.Request) {
 
 func handleGetImg(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
-	conf := GetConfig()
 
 	v := mux.Vars(r)
 	t, ok := v["uuid"]
@@ -139,7 +138,7 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	log.Printf("Serving image %s", conf.Saves+uid.String())
+	log.Printf("Serving image %s", uid.String())
 	img := GetImage(uid)
 
 	w.Write(img.Data)

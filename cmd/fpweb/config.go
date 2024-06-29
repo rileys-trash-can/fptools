@@ -29,7 +29,6 @@ type Config struct {
 	PrinterCType string `yaml:"printer.type"`
 
 	Listen        string `yaml:"listen"`
-	Saves         string `yaml:"saves"`
 	MaxPrintCount uint   `yaml:"maxpfcount"`
 	DB            string `yaml:"databasepath"`
 	DBType        string `yaml:"dbtype"`

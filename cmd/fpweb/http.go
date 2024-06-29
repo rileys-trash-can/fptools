@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"io"
+	"io/fs"
 	"log"
 	"strconv"
 
@@ -15,15 +16,12 @@ import (
 )
 
 type handleFile struct {
-	contenttype string
-	data        []byte
+	Name string
+	FS   fs.FS
 }
 
 func (hf *handleFile) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", hf.contenttype)
-	w.WriteHeader(200)
-
-	w.Write(hf.data)
+	http.ServeFileFS(w, r, hf.FS, hf.Name)
 
 	return
 }
@@ -342,4 +340,165 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
+}
+
+func handlePrintGET(w http.ResponseWriter, r *http.Request) {
+	uid := uuid.New()
+	newImageCh <- uid
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(200)
+
+	fmt.Fprintf(w, `<head>
+	  <meta http-equiv="Refresh" content="0; URL=/job/%s" />
+	</head>`, uid)
+
+	v := r.URL.Query()
+
+	if len(v["uuid"]) == 0 {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "No image UUID specified!",
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	uuid, err := uuid.Parse(v["uuid"][0])
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid  UUID specified!",
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	log.Printf("[GET] print %s", uuid)
+
+	job := &PrintJob{
+		UUID: uid,
+
+		ditherer: nil,
+
+		public:     false,
+		optresize:  false,
+		optstretch: false,
+		optrotate:  false,
+		optcenterh: false,
+		optcenterv: false,
+		opttiling:  false,
+	}
+
+	job.PFCount = 1
+	if len(r.Form["pf"]) > 0 {
+		i, err := strconv.ParseUint(r.FormValue("pf"), 10, 32)
+		job.PFCount = uint(i)
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Invalid PF Count: " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	img := GetImage(uuid)
+	if img.UUID != uuid { // image not returned
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "image not found: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	imgcfg, imgfmt, err := image.DecodeConfig(bytes.NewReader(img.Data))
+	if err != nil {
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Failed to Decode Image (header): " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	job.UnprocessedImage = img
+
+	select {
+	case printQ <- job:
+		break
+
+	default:
+		imageUpdateCh <- Status{
+			UUID: uid,
+
+			Step:     "print queue full",
+			Progress: -1,
+			Done:     true,
+		}
+	}
+	log.Printf("[POST] Received Image in %s format bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
+}
+
+func handlePrintList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	q := r.URL.Query()
+
+	var (
+		offsetstr = q["offset"]
+		limitstr  = q["limit"]
+	)
+
+	db := GetDB().Model(&Image{})
+
+	var offset, limit uint64
+	var err error
+
+	if len(offsetstr) == 0 || len(limitstr) == 0 {
+		offset, limit = 0, 12
+	} else {
+		offset, err = strconv.ParseUint(offsetstr[0], 10, 31)
+		if err != nil {
+			panic(err)
+		}
+
+		limit, err = strconv.ParseUint(limitstr[0], 10, 31)
+		if err != nil {
+			panic(err)
+		}
+
+		if limit > 100 {
+			panic("Invalid limit; limit > 100")
+		}
+	}
+	var length int
+	db.Select("count(1)").Where("is_processed", false).Find(&length)
+
+	var l = ImageList{
+		Offset: int(offset),
+		Limit:  int(limit),
+		Total:  length,
+	}
+	db.Select("UUID", "UnProcessed", "Processed",
+		"IsProcessed", "Ext", "Public", "Name").Where("is_processed", false).Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
+
+	err = tList.Execute(w, l)
+	if err != nil {
+		panic(err)
+	}
 }

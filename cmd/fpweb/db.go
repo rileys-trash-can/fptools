@@ -108,6 +108,14 @@ type Image struct {
 	Name        string // optionally the origin files name
 }
 
+func (i *Image) ProcessedString() string {
+	if i.IsProcessed {
+		return "processed"
+	}
+
+	return "raw"
+}
+
 func GetDB() *gorm.DB {
 	dbOnce.Do(openDB)
 

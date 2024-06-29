@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Label Printer - Prints</title>
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="/bs.css">
+
+	<style>
+		.preview {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			max-width: 20%;
+			max-height: 40%;
+			border-color: #800080;
+			border-width: 2px;
+			border-style: dashed;
+		}
+		
+		.preview:hover {
+			max-height: 100%;
+			max-width: 100%;
+			top: 0px;
+			right: 0px;
+			position: absolute;
+		}
+
+		.card {
+			border-radius: 15px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container text-center mt-12">
+		<h1>Label Printer - Prints</h1>
+		<p class="lead">List of public prints ({{ .Limit }} / {{ .Total }})</p>
+		<hr>
+
+        <div class="row mt-12">
+			{{ range .Images }}
+	            <div class="col-md-auto">
+					<div class="card" style="width: 18rem;">
+					  <img class="card-img-top" src="img/{{ .UUID }}" alt="Card image cap">
+					  <img class="preview" src="img/{{ .Processed }}" alt="Card image cap">
+					  <div class="card-body">
+					    <h5 class="card-title">{{ .Name }}</h5>
+					    <a href="/api/print?uuid={{ .UUID }}" class="btn btn-primary">print again</a>
+					  </div>
+					</div>
+				</div>
+			{{ else }}
+				<div class="col-md-12">
+					<span class="bi bi-tools h1"></span>
+					<h4>No Prints jet :/</h4>
+					<p>
+						be the first!
+					</p>
+					<p>
+						<a class="btn btn-primary" href="/" role="button">To the Form!</a>
+					</p>
+				</div>
+			{{ end }}
+		</div>
+
+		<footer style="margin-top: 2em">
+			Made with
+			<i class="bi bi-heart-fill" style="color: red"></i> by Riley © 2024 &lt;riley (at) e926 (dot) de &gt;
+		</footer>
+	</div>
+</body>
+
+</html>
+

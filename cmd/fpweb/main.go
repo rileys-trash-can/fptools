@@ -39,15 +39,19 @@ func main() {
 	// static stuff
 	gmux.Path("/").
 		Methods("GET").
-		Handler(ErrorHandlerMiddleware(&handleFile{"text/html", eIndex}))
+		Handler(ErrorHandlerMiddleware(&handleFile{"html/index.html", embedFS}))
+
+	gmux.Path("/list").
+		Methods("GET").
+		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrintList)))
 
 	gmux.Path("/bs.css").
 		Methods("GET").
-		Handler(ErrorHandlerMiddleware(&handleFile{"text/css", eBScss}))
+		Handler(ErrorHandlerMiddleware(&handleFile{"html/bs.css", embedFS}))
 
 	gmux.Path("/api").
 		Methods("GET").
-		Handler(ErrorHandlerMiddleware(&handleFile{"text/plain", eIndexApi}))
+		Handler(ErrorHandlerMiddleware(&handleFile{"html/index.txt", embedFS}))
 
 	// ui stuff
 	gmux.Path("/img/{uuid}").
@@ -61,6 +65,10 @@ func main() {
 	gmux.Path("/api/print").
 		Methods("POST").
 		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrintPOST)))
+
+	gmux.Path("/api/print").
+		Methods("GET").
+		Handler(ErrorHandlerMiddleware(http.HandlerFunc(handlePrintGET)))
 
 	// api stuff
 	gmux.Path("/api/print").
