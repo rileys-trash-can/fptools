@@ -64,6 +64,13 @@
 					</p>
 				</div>
 			{{ end }}
+			{{ if not .IsAll }}
+				<div class="col-md-12">
+					<p>
+						<a class="btn btn-primary" href="?offset={{ .OffsetPlusImages }}&limit={{ .Limit }}" role="button">> Next Page > </a>
+					</p>
+				</div>
+			{{ end }}
 		</div>
 
 		<footer style="margin-top: 2em">

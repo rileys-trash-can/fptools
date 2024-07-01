@@ -346,7 +346,7 @@ func handlePrintList(w http.ResponseWriter, r *http.Request) {
 	var length int
 	db.Select("count(1)").Where("is_processed", false).Find(&length)
 
-	var l = ImageList{
+	var l = &ImageList{
 		Offset: int(offset),
 		Limit:  int(limit),
 		Total:  length,

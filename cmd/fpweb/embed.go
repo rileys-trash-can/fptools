@@ -2,8 +2,8 @@ package main
 
 import (
 	"embed"
+	"html/template"
 	"io"
-	"text/template"
 )
 
 var (

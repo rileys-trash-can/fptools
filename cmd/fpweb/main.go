@@ -166,6 +166,14 @@ type ImageList struct {
 	Images []Image `json:"images"`
 }
 
+func (il *ImageList) IsAll() bool {
+	return len(il.Images) >= (il.Total - il.Offset)
+}
+
+func (il *ImageList) OffsetPlusImages() int {
+	return len(il.Images) + il.Offset
+}
+
 func T[K any](c bool, a, b K) K {
 	if c {
 		return a

@@ -5,7 +5,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"image"
@@ -84,7 +83,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		var length int
 		db.Select("count(1)").Find(&length)
 
-		var l = ImageList{
+		var l = &ImageList{
 			Offset: int(offset),
 			Limit:  int(limit),
 			Total:  length,
@@ -155,14 +154,21 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 	w.Write(img.Data)
 }
 
+type PrintJobID struct {
+	ID uuid.UUID
+}
+
 func handlePrint(w http.ResponseWriter, r *http.Request) {
 	uid := uuid.New()
 	newImageCh <- uid
 
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	fmt.Fprintf(w, "job id: %s\n", uid)
+	e := json.NewEncoder(w)
+	e.Encode(&PrintJobID{
+		uid,
+	})
 
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
