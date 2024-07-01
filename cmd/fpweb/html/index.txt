@@ -6,6 +6,7 @@ Usage:
 			- x (width)
 			- y (height)
 			- pf (printfeeds; # of copys to print; zero is supported, default is 1)
+			- name (string optional, defaults to date and time)
  			- resize
 			- stretch
 			- rotate

@@ -3,11 +3,16 @@ package main
 import (
 	"net/http"
 
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"image"
+	"io"
 	"log"
 	"strconv"
+	"time"
 )
 
 func handleList(w http.ResponseWriter, r *http.Request) {
@@ -148,4 +153,156 @@ func handleGetImg(w http.ResponseWriter, r *http.Request) {
 	img := GetImage(uid)
 
 	w.Write(img.Data)
+}
+
+func handlePrint(w http.ResponseWriter, r *http.Request) {
+	uid := uuid.New()
+	newImageCh <- uid
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(200)
+
+	fmt.Fprintf(w, "job id: %s\n", uid)
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid File Upload: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	log.Printf("[POST] received image file; size: %d bytes", len(data))
+
+	q := r.URL.Query()
+
+	job := &PrintJob{
+		UUID: uid,
+
+		public:     len(q["public"]) > 0,
+		optresize:  len(q["resize"]) > 0,
+		optstretch: len(q["stretch"]) > 0,
+		optrotate:  len(q["rotate"]) > 0,
+		optcenterh: len(q["centerh"]) > 0,
+		optcenterv: len(q["centerv"]) > 0,
+		opttiling:  len(q["tiling"]) > 0, //TODO: use
+	}
+
+	dname := ""
+	dnames := q["dither"]
+
+	log.Printf("%+v", q)
+	if len(dnames) > 0 {
+		dname = dnames[0]
+	}
+
+	job.ditherer = DitherFromString(dname)
+
+	job.PFCount = 1
+	pfs := q["pf"]
+	if len(pfs) > 0 {
+		i, err := strconv.ParseUint(pfs[0], 10, 32)
+		job.PFCount = uint(i)
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Invalid PF Count: " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	sizexs, sizeys := q["x"], q["y"]
+	if len(sizexs) == 0 || len(sizeys) == 0 {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "No Size of Label Specified",
+			Progress: -1,
+			Done:     true,
+		}
+
+		return
+	}
+
+	x64, err := strconv.ParseUint(sizexs[0], 10, 31)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid width: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	y64, err := strconv.ParseUint(sizeys[0], 10, 31)
+	if err != nil {
+		imageUpdateCh <- Status{
+			UUID:     uid,
+			Step:     "Invalid height: " + err.Error(),
+			Progress: -1,
+			Done:     true,
+		}
+		return
+	}
+
+	job.LabelSize = image.Pt(int(x64), int(y64))
+
+	// image handeling
+	imgcfg, imgfmt, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Failed to Decode Image (header): " + err.Error(),
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+	}
+
+	job.UnprocessedImage = Image{
+		UUID: uuid.New(),
+
+		IsProcessed: false,
+		Ext:         imgfmt,
+		Data:        data,
+		Public:      job.public,
+		Name:        first(q["name"], time.Now().Format(time.RFC3339)),
+	}
+
+	GetDB().Create(&job.UnprocessedImage)
+
+	select {
+	case printQ <- job:
+		break
+
+	default:
+		imageUpdateCh <- Status{
+			UUID: uid,
+
+			Step:     "print queue full",
+			Progress: -1,
+			Done:     true,
+		}
+	}
+
+	log.Printf("[POST] Received %s Image with bounds: %d x %d", imgfmt, imgcfg.Width, imgcfg.Height)
+}
+
+func first[K any](a []K, b K) K {
+	if len(a) > 0 {
+		return a[0]
+	}
+
+	return b
 }
