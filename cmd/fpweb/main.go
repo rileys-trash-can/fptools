@@ -174,6 +174,24 @@ func (il *ImageList) OffsetPlusImages() int {
 	return len(il.Images) + il.Offset
 }
 
+func (il *ImageList) IsFirst() bool {
+	return il.Offset <= 0
+}
+
+func (il *ImageList) NIsAllOrNIsFirst() bool {
+	return !il.IsAll() || !il.IsFirst()
+}
+
+// also clamped
+func (il *ImageList) OffsetMinusImages() int {
+	i := len(il.Images) - il.Offset
+	if i >= 0 {
+		return i
+	}
+
+	return 0
+}
+
 func T[K any](c bool, a, b K) K {
 	if c {
 		return a

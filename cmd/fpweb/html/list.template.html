@@ -42,8 +42,8 @@
 
         <div class="row">
 			{{ range .Images }}
-	            <div class="col-md-auto mt-5">
-					<div class="card" style="width: 18rem;">
+	            <div class="col-md-4 mt-4">
+					<div class="card" style="width: auto;">
 					  <img class="card-img-top" src="img/{{ .UUID }}" alt="Card image cap">
 					  <img class="preview" src="img/{{ .Processed }}" alt="Card image cap">
 					  <div class="card-body">
@@ -64,10 +64,15 @@
 					</p>
 				</div>
 			{{ end }}
-			{{ if not .IsAll }}
-				<div class="col-md-12">
+			{{ if .NIsAllOrNIsFirst }}
+				<div class="col-md-12 mt-3">
 					<p>
-						<a class="btn btn-primary" href="?offset={{ .OffsetPlusImages }}&limit={{ .Limit }}" role="button">> Next Page > </a>
+					{{ if not .IsFirst }}
+						<a class="btn btn-info" href="?offset={{ .OffsetMinusImages }}&limit={{ .Limit }}" role="button">< Previous Page < </a>
+					{{ end }}
+					{{ if not .IsAll }}
+						<a class="btn btn-info" href="?offset={{ .OffsetPlusImages }}&limit={{ .Limit }}" role="button">> Next Page > </a>
+					{{ end }}
 					</p>
 				</div>
 			{{ end }}
