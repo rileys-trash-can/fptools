@@ -235,6 +235,23 @@ func handlePrintGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var printfeeds uint = 1
+	if len(v["pf"]) > 0 {
+		pf, err := strconv.ParseUint(v["pf"][0], 10, 31)
+		if err != nil {
+			imageUpdateCh <- Status{
+				UUID:     uid,
+				Step:     "Invalid PF count specified!",
+				Progress: -1,
+				Done:     true,
+			}
+
+			return
+		}
+
+		printfeeds = uint(pf)
+	}
+
 	log.Printf("[GET] reprint of image %s", uuid)
 
 	job := &PrintJob{
@@ -251,21 +268,7 @@ func handlePrintGET(w http.ResponseWriter, r *http.Request) {
 		opttiling:  false,
 	}
 
-	job.PFCount = 1
-	if len(r.Form["pf"]) > 0 {
-		i, err := strconv.ParseUint(r.FormValue("pf"), 10, 32)
-		job.PFCount = uint(i)
-		if err != nil {
-			imageUpdateCh <- Status{
-				UUID:     uid,
-				Step:     "Invalid PF Count: " + err.Error(),
-				Progress: -1,
-				Done:     true,
-			}
-
-			return
-		}
-	}
+	job.PFCount = printfeeds
 
 	img := GetImage(uuid)
 	if img.UUID != uuid { // image not returned
@@ -344,7 +347,7 @@ func handlePrintList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var length int
-	db.Select("count(1)").Where("is_processed", false).Find(&length)
+	db.Select("count(1)").Where("is_processed", false).Where("is_processed", false).Find(&length)
 
 	var l = &ImageList{
 		Offset: int(offset),
@@ -352,7 +355,7 @@ func handlePrintList(w http.ResponseWriter, r *http.Request) {
 		Total:  length,
 	}
 	db.Select("UUID", "UnProcessed", "Processed",
-		"IsProcessed", "Ext", "Public", "Name").Where("is_processed", false).Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
+		"IsProcessed", "Ext", "Public", "Name").Where("public", true).Where("is_processed", false).Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
 
 	err = tList.Execute(w, l)
 	if err != nil {
