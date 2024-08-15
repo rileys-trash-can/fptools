@@ -284,6 +284,7 @@ func handlePrint(w http.ResponseWriter, r *http.Request) {
 		Data:        data,
 		Public:      job.public,
 		Name:        first(q["name"], time.Now().Format(time.RFC3339)),
+		Created:     time.Now(),
 	}
 
 	GetDB().Create(&job.UnprocessedImage)

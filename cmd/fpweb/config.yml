@@ -5,5 +5,15 @@ printer.type: ""
 listen: "[::]:8070"
 maxpfcount: 1
 
-databasepath: "data.db"
+databasepath: "pi.db"
 dbtype: "sqlite3"
+
+ssh.pass: "pass"
+ssh.user: "itadmin"
+ssh.key: "AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAA7usbqSzyb9e+wT6O9lrh/iBM9T1G/od9561o7hUqAi36BbNDTcwOHdwAY+CG/4XWIuFlRJfZBKArZT5jFeVnsywCClCJuPIw+Qg+wsaJLZmCRZPjG8/Cug6IbkMu+yv9sclEVLUWC9VnhUetxwOSA3RvpB5HMW+kvWDnfE0A6fT9wDQ=="
+ssh.addr: "10.0.0.5:22"
+
+music.minpf: 1
+music.intwait: "11s480ms"
+music.contplaying: "5s"
+

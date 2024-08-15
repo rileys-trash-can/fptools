@@ -51,6 +51,11 @@ func goPrintQ() {
 				log.Printf("[printQ] Got printjob %+v", job)
 			}
 
+			var start, stop chan struct{}
+			if *OptSupportMusic && GetConfig().MusicMinPF <= int(job.PFCount) {
+				start, stop = doaudio()
+			}
+
 			var currentimage = job.UnprocessedImage.UUID
 
 			imageUpdateCh <- Status{
@@ -210,6 +215,7 @@ func goPrintQ() {
 					Data:        buf.Bytes(),
 					Public:      job.public,
 					Name:        job.UnprocessedImage.Name + "_processed",
+					Created:     time.Now(),
 				})
 
 				GetDB().Model(&Image{}).Where("UUID", job.UnprocessedImage.UUID).
@@ -243,7 +249,14 @@ func goPrintQ() {
 
 						continue
 					}
+				}
 
+				if start != nil {
+					<-start
+					log.Printf("start channel closed, start printing")
+				}
+
+				if job.PFCount > 0 {
 					err = printer.PF(job.PFCount)
 					if err != nil {
 						imageUpdateCh <- Status{
@@ -256,6 +269,14 @@ func goPrintQ() {
 
 						continue
 					}
+				} else {
+					log.Printf("job.PFCount is less than or equal 0, sleeping 1 sec")
+					time.Sleep(time.Second)
+				}
+
+				if stop != nil {
+					log.Printf("printing over, closing stop channel")
+					close(stop)
 				}
 			} else {
 				conf := GetConfig()

@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"gorm.io/gorm/clause"
 	"io"
 	"io/fs"
 	"log"
 	"strconv"
+	"time"
 
 	"image"
 )
@@ -179,6 +181,7 @@ func handlePrintPOST(w http.ResponseWriter, r *http.Request) {
 		Data:        data,
 		Public:      job.public,
 		Name:        header.Filename,
+		Created:     time.Now(),
 	}
 
 	GetDB().Create(&job.UnprocessedImage)
@@ -355,7 +358,9 @@ func handlePrintList(w http.ResponseWriter, r *http.Request) {
 		Total:  length,
 	}
 	db.Select("UUID", "UnProcessed", "Processed",
-		"IsProcessed", "Ext", "Public", "Name").Where("public", true).Where("is_processed", false).Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
+		"IsProcessed", "Ext", "Public", "Name").Where("public", true).Where("is_processed", false).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "created"}, Desc: true}).
+		Offset(int(offset)).Limit(int(limit)).Find(&l.Images)
 
 	err = tList.Execute(w, l)
 	if err != nil {

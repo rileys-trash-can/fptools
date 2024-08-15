@@ -11,6 +11,7 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/rileys-trash-can/gorm-sqlite-cgo-free v0.0.0-20240629120133-fd3f247287ae
 	github.com/samuel/go-pcx v0.0.0-20210515040514-6a5ce4d132f7
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/image v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.5.7

@@ -37,6 +37,11 @@ func main() {
 
 	gmux := mux.NewRouter()
 
+	if *OptSupportMusic && GetConfig().MusicMinPF > 0 {
+		log.Printf("Initializing music")
+		go initmusic()
+	}
+
 	// static stuff
 	gmux.Path("/").
 		Methods("GET").
@@ -90,6 +95,7 @@ func main() {
 		addr = "[::]:8070"
 	}
 
+	log.Printf("Initializing webinterface")
 	go func() {
 		// prevent logging anomaly where it says listening on and then failed to listen&serve
 		time.Sleep(time.Millisecond * 500)

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 var (
@@ -21,6 +22,8 @@ var (
 	OptVerbose = flag.Bool("verbose", false, "toggle verbose logging")
 	OptBeep    = flag.Bool("beep", true, "toggle connection-beep")
 	OptDryRun  = flag.Bool("dry-run", false, "disables connection to printer; for testing")
+
+	OptSupportMusic = flag.Bool("music-support", false, "enables music while printing")
 )
 
 type Config struct {
@@ -32,6 +35,15 @@ type Config struct {
 	MaxPrintCount uint   `yaml:"maxpfcount"`
 	DB            string `yaml:"databasepath"`
 	DBType        string `yaml:"dbtype"`
+
+	MusicMinPF       int           `yaml:"music.minpf"`
+	MusicIntWait     time.Duration `yaml:"music.intwait"`
+	MusicContPlaying time.Duration `yaml:"music.contplaying"`
+
+	SSHPass string `yaml:"ssh.pass"`
+	SSHUser string `yaml:"ssh.user"`
+	SSHKey  string `yaml:"ssh.key"`
+	SSHAddr string `yaml:"ssh.addr"`
 }
 
 var config *Config

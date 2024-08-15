@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	// image stuffs
 	"github.com/rileys-trash-can/gorm-sqlite-cgo-free"
@@ -36,10 +37,11 @@ func saveImage(b []byte, uuid uuid.UUID, public bool, name, ext string) error {
 	GetDB().Create(&Image{
 		UUID: uuid,
 
-		Ext:    ext,
-		Data:   b,
-		Public: public,
-		Name:   name,
+		Ext:     ext,
+		Data:    b,
+		Public:  public,
+		Name:    name,
+		Created: time.Now(),
 	})
 	return nil
 }
@@ -93,10 +95,15 @@ func openDB() {
 		log.Fatalf("Invalid DBType: sqlite or mysql is valid")
 	}
 
-	db.AutoMigrate(&Image{})
+	err = db.AutoMigrate(&Image{})
+	if err != nil {
+		log.Fatalf("Failed to AutoMigrate: %s", err)
+	}
 }
 
 type Image struct {
+	Created time.Time
+
 	UUID        uuid.UUID
 	UnProcessed *uuid.UUID // unprocessed counterpart
 	Processed   *uuid.UUID // processed counterpart
